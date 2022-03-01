@@ -16,7 +16,7 @@ AUTOCOMMIT_REGEXP = re.compile(
 )
 
 # CUBRID Reserved Keywords (http://www.cubrid.org/manual/841/en/Reserved%20Words)
-ReservedWords = set(
+RESERVED_WORDS = set(
     [
         "absolute",
         "action",
@@ -396,7 +396,7 @@ ReservedWords = set(
 
 
 class CubridIdentifierPreparer(compiler.IdentifierPreparer):
-    reserved_words = ReservedWords
+    reserved_words = RESERVED_WORDS
 
     def __init__(
         self,
