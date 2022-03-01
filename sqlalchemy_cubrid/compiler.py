@@ -16,9 +16,12 @@ from sqlalchemy import create_engine
 
 
 class CubridCompiler(compiler.SQLCompiler):
-    def __init__(self, dialect, statement, column_keys=None, inline=False, **kwargs):
+    def __init__(
+        self, dialect, statement, column_keys=None, inline=False, **kwargs
+    ):
         super(CubridCompiler, self).__init__(
-            dialect, statement, column_keys, inline, **kwargs)
+            dialect, statement, column_keys, inline, **kwargs
+        )
 
 
 class CubridDDLCompiler(compiler.DDLCompiler):

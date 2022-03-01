@@ -1,4 +1,3 @@
-
 # sqlalchemy_cubrid/__init__.py
 # Copyright (C) 2021-2022 by Curbrid
 # <see AUTHORS file>
@@ -8,6 +7,6 @@
 
 from sqlalchemy.dialects import registry
 
-__version__ = '0.0.1'
+__version__ = "0.0.1"
 
 registry.register("cubrid", "sqlalchemy_cubrid.dialect", "CubridDialect")

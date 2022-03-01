@@ -12,7 +12,8 @@ class NUMERIC(_NumericType, sqltypes.NUMERIC):
     """CUBRID NUMERIC type.
     Default value is NUMERIC(15,0)
     """
-    __visit_name__ = 'NUMERIC'
+
+    __visit_name__ = "NUMERIC"
 
     def __init__(self, precision=None, scale=None, **kw):
         super(NUMERIC, self).__init__(precision=precision, scale=scale, **kw)
