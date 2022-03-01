@@ -8,6 +8,13 @@
 from sqlalchemy.sql import sqltypes
 
 
+class _NumericType(object):
+    """Base for CUBRID numeric types."""
+
+    def __init__(self, **kw):
+        super(_NumericType, self).__init__(**kw)
+
+
 class NUMERIC(_NumericType, sqltypes.NUMERIC):
     """CUBRID NUMERIC type.
     Default value is NUMERIC(15,0)
