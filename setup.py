@@ -20,7 +20,7 @@ setup(
     packages=["sqlalchemy_cubrid"],
     include_package_data=True,
     tests_require=["pytest >= 2.5.2"],
-    install_requires=["sqlalchemy", "cubrid"],
+    install_requires=["sqlalchemy", "CUBRID-Python"],
     entry_points={
         "sqlalchemy.dialects": [
             "cubrid = sqlalchemy_cubrid.dialect:CubridDialect",
