@@ -7,6 +7,7 @@
 
 
 import re
+
 from sqlalchemy.engine import default
 from sqlalchemy.sql import compiler
 
@@ -15,7 +16,7 @@ AUTOCOMMIT_REGEXP = re.compile(
     r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|MERGE)", re.I | re.UNICODE
 )
 
-# CUBRID Reserved Keywords (http://www.cubrid.org/manual/841/en/Reserved%20Words)
+# CUBRID Reserved words: http://www.cubrid.org/manual/841/en/Reserved%20Words
 RESERVED_WORDS = set(
     [
         "absolute",

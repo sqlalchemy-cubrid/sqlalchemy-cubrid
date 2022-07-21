@@ -6,15 +6,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy.engine import default
-from sqlalchemy_cubrid.compiler import (
-    CubridCompiler,
-    CubridDDLCompiler,
-    CubridTypeCompiler,
-)
-from sqlalchemy_cubrid.base import (
-    CubridIdentifierPreparer,
-    CubridExecutionContext,
-)
+from sqlalchemy_cubrid.base import CubridExecutionContext
+from sqlalchemy_cubrid.base import CubridIdentifierPreparer
+from sqlalchemy_cubrid.compiler import CubridCompiler
+from sqlalchemy_cubrid.compiler import CubridDDLCompiler
+from sqlalchemy_cubrid.compiler import CubridTypeCompiler
 
 
 class CubridDialect(default.DefaultDialect):
@@ -30,7 +26,6 @@ class CubridDialect(default.DefaultDialect):
 
     def __init__(self, **kwargs):
         super(CubridDialect, self).__init__(**kwargs)
-
 
     @classmethod
     def dbapi(cls):
@@ -59,14 +54,9 @@ class CubridDialect(default.DefaultDialect):
             params = super(CubridDialect, self).create_connect_args(url)[1]
             print(params)
 
-            args = (
-                'CUBRID:localhost:33000:testdb:::',
-                'dba',
-                '1234'
-            )
-            kwargs = {
-            }
+            args = ("CUBRID:localhost:33000:testdb:::", "dba", "1234")
+            kwargs = {}
             return args, kwargs
-          
+
 
 dialect = CubridDialect

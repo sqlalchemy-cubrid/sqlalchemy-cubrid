@@ -1,4 +1,3 @@
-from os import path
 from setuptools import setup
 
 setup(
@@ -14,13 +13,22 @@ setup(
         "Programming Language :: Python :: 3.7",
     ],
     keywords="SQLAlchemy Cubrid",
-    author="Yeongseon Choe", "Gyeongjun Paik"
-    author_email="yeongseon.choe@gmail.com", "paikend@gmail.com"
+    author=[
+        "Yeongseon Choe",
+        "Gyeongjun Paik",
+    ],
+    author_email=[
+        "yeongseon.choe@gmail.com",
+        "paikend@gmail.com",
+    ],
     license="MIT",
     packages=["sqlalchemy_cubrid"],
     include_package_data=True,
     tests_require=["pytest >= 2.5.2"],
-    install_requires=["sqlalchemy", "CUBRID-Python"],
+    install_requires=[
+        "sqlalchemy",
+        "CUBRID-Python",
+    ],
     entry_points={
         "sqlalchemy.dialects": [
             "cubrid = sqlalchemy_cubrid.dialect:CubridDialect",
