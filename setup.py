@@ -13,14 +13,8 @@ setup(
         "Programming Language :: Python :: 3.7",
     ],
     keywords="SQLAlchemy Cubrid",
-    author=[
-        "Yeongseon Choe",
-        "Gyeongjun Paik",
-    ],
-    author_email=[
-        "yeongseon.choe@gmail.com",
-        "paikend@gmail.com",
-    ],
+    author="Yeongseon Choe, Gyeongjun Paik",
+    author_email="yeongseon.choe@gmail.com, paikend@gmail.com",
     license="MIT",
     packages=["sqlalchemy_cubrid"],
     include_package_data=True,
