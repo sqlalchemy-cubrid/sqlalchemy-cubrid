@@ -6,15 +6,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy.engine import default
-from sqlalchemy_cubrid.compiler import (
-    CubridCompiler,
-    CubridDDLCompiler,
-    CubridTypeCompiler,
-)
-from sqlalchemy_cubrid.base import (
-    CubridIdentifierPreparer,
-    CubridExecutionContext,
-)
+from sqlalchemy_cubrid.base import CubridExecutionContext
+from sqlalchemy_cubrid.base import CubridIdentifierPreparer
+from sqlalchemy_cubrid.compiler import CubridCompiler
+from sqlalchemy_cubrid.compiler import CubridDDLCompiler
+from sqlalchemy_cubrid.compiler import CubridTypeCompiler
 
 
 class CubridDialect(default.DefaultDialect):
