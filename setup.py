@@ -11,11 +11,11 @@ setup(
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License"
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
     ],
     keywords="SQLAlchemy Cubrid",
-    author="Yeongseon Choe",
-    author_email="yeongseon.choe@gmail.com",
+    author="Yeongseon Choe", "Gyeongjun Paik"
+    author_email="yeongseon.choe@gmail.com", "paikend@gmail.com"
     license="MIT",
     packages=["sqlalchemy_cubrid"],
     include_package_data=True,
