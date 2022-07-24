@@ -52,9 +52,10 @@ class CubridDialect(default.DefaultDialect):
 
         if url is not None:
             params = super(CubridDialect, self).create_connect_args(url)[1]
-            print(params)
-
-            args = ("CUBRID:localhost:33000:testdb:::", "dba", "1234")
+            url = "CUBRID:{}:{}:{}:::".format(
+                params["host"], params["port"], params["database"]
+            )
+            args = (url, params["username"], params["password"])
             kwargs = {}
             return args, kwargs
 
