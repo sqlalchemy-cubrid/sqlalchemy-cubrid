@@ -19,7 +19,7 @@ Usage
 -----
 
 ```python
-engine = create_engine("cubrid://dba:1234@localhost:33000/demodb"
+engine = create_engine("cubrid://dba:1234@localhost:33000/demodb")
 connection = engine.connect()
 ```
 
