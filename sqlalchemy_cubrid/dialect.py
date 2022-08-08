@@ -50,14 +50,16 @@ class CubridDialect(default.DefaultDialect):
         #    user - Authorized username.
         #    password - Password associated with the username.
 
-        if url is not None:
-            params = super(CubridDialect, self).create_connect_args(url)[1]
-            url = "CUBRID:{}:{}:{}:::".format(
-                params["host"], params["port"], params["database"]
-            )
-            args = (url, params["username"], params["password"])
-            kwargs = {}
-            return args, kwargs
+        if url is None:
+            raise ValueError(f"Unexpected database format")
+
+        params = super(CubridDialect, self).create_connect_args(url)[1]
+        url = (
+            f'CUBRID:{params["host"]}:{params["port"]}:{params["database"]}:::'
+        )
+        args = (url, params["username"], params["password"])
+        kwargs = {}
+        return args, kwargs
 
 
 dialect = CubridDialect
