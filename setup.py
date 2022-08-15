@@ -26,6 +26,7 @@ setup(
     entry_points={
         "sqlalchemy.dialects": [
             "cubrid = sqlalchemy_cubrid.dialect:CubridDialect",
+            "cubrid.cubrid = sqlalchemy_cubrid.dialect:CubridDialect",
         ]
     },
 )
