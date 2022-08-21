@@ -12,6 +12,73 @@ from sqlalchemy_cubrid.compiler import CubridCompiler
 from sqlalchemy_cubrid.compiler import CubridDDLCompiler
 from sqlalchemy_cubrid.compiler import CubridTypeCompiler
 
+from sqlalchemy import types as sqltypes
+from sqlalchemy.types import CLOB
+from sqlalchemy.types import DATE
+from sqlalchemy.types import DATETIME
+from sqlalchemy.types import INTEGER
+from sqlalchemy.types import TIME
+from sqlalchemy.types import TIMESTAMP
+
+from sqlalchemy_cubrid.types import BIGINT
+from sqlalchemy_cubrid.types import BIT
+from sqlalchemy_cubrid.types import BLOB
+from sqlalchemy_cubrid.types import CHAR
+from sqlalchemy_cubrid.types import VARCHAR
+from sqlalchemy_cubrid.types import DECIMAL
+from sqlalchemy_cubrid.types import DOUBLE
+from sqlalchemy_cubrid.types import FLOAT
+from sqlalchemy_cubrid.types import SEQUENCE
+from sqlalchemy_cubrid.types import MONETARY
+from sqlalchemy_cubrid.types import MULTISET
+from sqlalchemy_cubrid.types import NCHAR
+from sqlalchemy_cubrid.types import NVARCHAR
+from sqlalchemy_cubrid.types import NUMERIC
+from sqlalchemy_cubrid.types import OBJECT
+from sqlalchemy_cubrid.types import SET
+from sqlalchemy_cubrid.types import SMALLINT
+from sqlalchemy_cubrid.types import STRING
+
+colspecs = {
+    sqltypes.Numeric: NUMERIC,
+    sqltypes.Float: FLOAT,
+    sqltypes.Time: TIME,
+}
+
+# ischema names is used for reflecting columns (get_columns)
+ischema_names = {
+    "bigint": BIGINT,
+    "bit": BIT,
+    "bit varying": BIT,
+    "blob": BLOB,
+    "char": CHAR,
+    "character varying": VARCHAR,
+    "clob": CLOB,
+    "date": DATE,
+    "datetime": DATETIME,
+    "decimal": DECIMAL,
+    "double": DOUBLE,
+    "float": FLOAT,
+    "integer": INTEGER,
+    "list": SEQUENCE,
+    "monetary": MONETARY,
+    "multiset": MULTISET,
+    "nchar": NCHAR,
+    "nvarchar": NVARCHAR,
+    "numeric": NUMERIC,
+    "object": OBJECT,
+    "sequence": SEQUENCE,
+    "set": SET,
+    "smallint": SMALLINT,
+    "short": SMALLINT,
+    "string": STRING,
+    "time": TIME,
+    "timestamp": TIMESTAMP,
+    "varbit": BIT,
+    "varchar": VARCHAR,
+    "varnchar": NVARCHAR,
+}
+
 
 class CubridDialect(default.DefaultDialect):
     name = "cubrid"
@@ -22,6 +89,9 @@ class CubridDialect(default.DefaultDialect):
     type_compiler = CubridTypeCompiler
     preparer = CubridIdentifierPreparer
     execution_ctx_cls = CubridExecutionContext
+
+    colspecs = colspecs
+    ischema_names = ischema_names
 
     # https://www.cubrid.org/manual/en/9.3.0/sql/identifier.html
     max_identifier_length = 254
