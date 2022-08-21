@@ -343,11 +343,14 @@ class CubridDialect(default.DefaultDialect):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_isolation_level`.
         """
-        cursor = dbapi_conn.cursor()
-        cursor.execute("GET TRANSACTION ISOLATION LEVEL")
-        val = cursor.fetchone()[0]
-        cursor.close()
-        return val.upper()
+
+        # TODO:
+        # cursor = dbapi_conn.cursor()
+        # cursor.execute("GET TRANSACTION ISOLATION LEVEL")
+        # val = cursor.fetchone()[0]
+        # cursor.close()
+        # return val.upper()
+        return None
 
 
 dialect = CubridDialect
