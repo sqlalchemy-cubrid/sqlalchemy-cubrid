@@ -90,10 +90,13 @@ class CubridDialect(default.DefaultDialect):
     preparer = CubridIdentifierPreparer
     execution_ctx_cls = CubridExecutionContext
 
+    # see: https://www.cubrid.org/manual/en/9.3.0/api/python.html
+    default_paramstyle = "qmark"
+
     colspecs = colspecs
     ischema_names = ischema_names
 
-    # https://www.cubrid.org/manual/en/9.3.0/sql/identifier.html
+    # see: https://www.cubrid.org/manual/en/9.3.0/sql/identifier.html
     max_identifier_length = 254
     max_index_name_length = 254
     max_constraint_name_length = 254
@@ -101,6 +104,30 @@ class CubridDialect(default.DefaultDialect):
     def __init__(self, isolation_level=None, **kwargs):
         super(CubridDialect, self).__init__(**kwargs)
         isolation_level = isolation_level
+
+    # Data Type
+    supports_native_enum = False
+    supports_native_boolean = True
+    supports_native_decimal = True
+
+    # Column options
+    supports_sequences = False
+
+    # DDL
+    supports_alter = True
+
+    # DML
+    supports_default_values = False
+    """dialect supports INSERT... DEFAULT VALUES syntax"""
+
+    supports_default_metavalue = False
+    """dialect supports INSERT... VALUES (DEFAULT) syntax"""
+
+    supports_empty_insert = False
+    """dialect supports INSERT () VALUES ()"""
+
+    supports_multivalues_insert = True
+    postfetch_lastrowid = False
 
     @classmethod
     def dbapi(cls):
@@ -343,11 +370,14 @@ class CubridDialect(default.DefaultDialect):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_isolation_level`.
         """
-        cursor = dbapi_conn.cursor()
-        cursor.execute("GET TRANSACTION ISOLATION LEVEL")
-        val = cursor.fetchone()[0]
-        cursor.close()
-        return val.upper()
+
+        # TODO:
+        # cursor = dbapi_conn.cursor()
+        # cursor.execute("GET TRANSACTION ISOLATION LEVEL")
+        # val = cursor.fetchone()[0]
+        # cursor.close()
+        # return val.upper()
+        return None
 
 
 dialect = CubridDialect
