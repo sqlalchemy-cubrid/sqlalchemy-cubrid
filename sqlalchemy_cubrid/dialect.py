@@ -98,8 +98,9 @@ class CubridDialect(default.DefaultDialect):
     max_index_name_length = 254
     max_constraint_name_length = 254
 
-    def __init__(self, **kwargs):
+    def __init__(self, isolation_level=None, **kwargs):
         super(CubridDialect, self).__init__(**kwargs)
+        isolation_level = isolation_level
 
     @classmethod
     def dbapi(cls):
@@ -288,7 +289,14 @@ class CubridDialect(default.DefaultDialect):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.on_connect`.
         """
-        return None
+        if self.isolation_level:
+
+            def connect(conn):
+                self.set_isolation_level(conn, self.isolation_level)
+
+            return connect
+        else:
+            return None
 
     def reset_isolation_level(self, dbapi_conn):
         """
@@ -310,17 +318,36 @@ class CubridDialect(default.DefaultDialect):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.set_isolation_level`.
         """
-        return None
+        cursor = dbapi_conn.cursor()
+        cursor.execute(f"SET TRANSACTION ISOLATION LEVEL {level}")
+        cursor.execute("COMMIT")
+        cursor.close()
+
+    def get_isolation_level_spec(self, dbapi_conn):
+        return (
+            "SERIALIZABLE",  # 6
+            "REPEATABLE READ SCHEMA, REPETABLE READ INSTANCES",  # 5
+            "REPEATABLE READ SCHEMA, READ COMMITTED INSTANCES",  # 4
+            "CURSOR STABILITY",  # 4
+            "REPEATABLE READ SCHEMA, READ UNCOMMITTED INSTANCES",  # 3
+            "READ COMMITTED SCHEMA, READ COMMITTED INSTANCES",  # 2
+            "READ COMMITTED SCHEMA, READ UNCOMMITTED INSTANCES",  # 1
+        )
 
     def get_isolation_level(self, dbapi_conn):
         """Given a DBAPI connection, return its isolation level.
 
         :param dbapi_conn:
+        see: https://www.cubrid.org/manual/en/9.3.0/sql/transaction.html?highlight=isolation%20level#transaction-isolation-level
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_isolation_level`.
         """
-        return None
+        cursor = dbapi_conn.cursor()
+        cursor.execute("GET TRANSACTION ISOLATION LEVEL")
+        val = cursor.fetchone()[0]
+        cursor.close()
+        return val.upper()
 
 
 dialect = CubridDialect
