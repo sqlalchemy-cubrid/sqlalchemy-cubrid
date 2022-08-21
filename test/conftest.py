@@ -8,4 +8,4 @@ registry.register(
 
 pytest.register_assert_rewrite("sqlalchemy.testing.assertions")
 
-from sqlalchemy.testing.plugin.pytestplugin import *  # noqa
+from sqlalchemy.testing.plugin.pytestplugin import *
