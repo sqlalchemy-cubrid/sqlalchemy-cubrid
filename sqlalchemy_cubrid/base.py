@@ -376,15 +376,19 @@ class CubridIdentifierPreparer(compiler.IdentifierPreparer):
     def __init__(
         self,
         dialect,
-        initial_quote='"',
+        initial_quote="[",
         final_quote=None,
-        escape_quote='"',
+        escape_quote="]",
         omit_schema=False,
     ):
 
         super(CubridIdentifierPreparer, self).__init__(
             dialect, initial_quote, final_quote, escape_quote, omit_schema
         )
+
+    def _quote_free_identifiers(self, *ids):
+        """Unilaterally identifier-quote any number of strings."""
+        return tuple([self.quote_identifier(i) for i in ids if i is not None])
 
 
 class CubridExecutionContext(default.DefaultExecutionContext):
