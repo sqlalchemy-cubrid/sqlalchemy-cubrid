@@ -16,75 +16,94 @@ from sqlalchemy.sql import compiler
 # from sqlalchemy import exc, sql
 # from sqlalchemy import create_engine
 
-from sqlalchemy.types import CLOB
-from sqlalchemy.types import DATE
-from sqlalchemy.types import DATETIME
-from sqlalchemy.types import INTEGER
-from sqlalchemy.types import TIME
-from sqlalchemy.types import TIMESTAMP
-
-from sqlalchemy_cubrid.types import BIGINT
-from sqlalchemy_cubrid.types import BIT
-from sqlalchemy_cubrid.types import BLOB
-from sqlalchemy_cubrid.types import CHAR
-from sqlalchemy_cubrid.types import VARCHAR
-from sqlalchemy_cubrid.types import DECIMAL
-from sqlalchemy_cubrid.types import DOUBLE
-from sqlalchemy_cubrid.types import FLOAT
-from sqlalchemy_cubrid.types import SEQUENCE
-from sqlalchemy_cubrid.types import MONETARY
-from sqlalchemy_cubrid.types import MULTISET
-from sqlalchemy_cubrid.types import NCHAR
-from sqlalchemy_cubrid.types import NVARCHAR
-from sqlalchemy_cubrid.types import NUMERIC
-from sqlalchemy_cubrid.types import OBJECT
-from sqlalchemy_cubrid.types import SET
-from sqlalchemy_cubrid.types import SMALLINT
-from sqlalchemy_cubrid.types import STRING
-
-
-# ischema names is used for reflecting columns (get_columns)
-ischema_names = {
-    "bigint": BIGINT,
-    "bit": BIT,
-    "bit varying": BIT,
-    "blob": BLOB,
-    "char": CHAR,
-    "character varying": VARCHAR,
-    "clob": CLOB,
-    "date": DATE,
-    "datetime": DATETIME,
-    "decimal": DECIMAL,
-    "double": DOUBLE,
-    "float": FLOAT,
-    "integer": INTEGER,
-    "list": SEQUENCE,
-    "monetary": MONETARY,
-    "multiset": MULTISET,
-    "nchar": NCHAR,
-    "nvarchar": NVARCHAR,
-    "numeric": NUMERIC,
-    "object": OBJECT,
-    "sequence": SEQUENCE,
-    "set": SET,
-    "smallint": SMALLINT,
-    "short": SMALLINT,
-    "string": STRING,
-    "time": TIME,
-    "timestamp": TIMESTAMP,
-    "varbit": BIT,
-    "varchar": VARCHAR,
-    "varnchar": NVARCHAR,
-}
-
 
 class CubridCompiler(compiler.SQLCompiler):
+    """CubridCompiler implementation of"""
+
     def __init__(
         self, dialect, statement, column_keys=None, inline=False, **kwargs
     ):
         super(CubridCompiler, self).__init__(
             dialect, statement, column_keys, inline, **kwargs
         )
+
+    def visit_sysdate_func(self, fn, **kw):
+        return "SYSDATE"
+
+    def visit_utc_timestamp_func(self, fn, **kw):
+        return "UTC_TIME()"
+
+    def visit_cast(self, cast, **kw):
+        # see: https://www.cubrid.org/manual/en/9.3.0/sql/function/typecast_fn.html#cast
+        type_ = self.process(cast.typeclause)
+        if type_ is None:
+            return self.process(cast.clause.self_group())
+
+        return f"CAST({self.process(cast.clause)}AS {type_})"
+
+    def render_literal_value(self, value, type_):
+        value = super(CubridCompiler, self).render_literal_value(value, type_)
+        value = value.replace("\\", "\\\\")
+        return value
+
+    def get_select_precolumns(self, select, **kw):
+        # TODO
+        if select._distinct:
+            return "DISTINCT "
+        else:
+            return ""
+
+    def visit_join(self, join, asfrom=False, **kwargs):
+        # see: https://www.cubrid.org/manual/en/9.3.0/sql/query/select.html#join-query
+        return "".join(
+            (
+                self.process(join.left, asfrom=True, **kwargs),
+                (join.isouter and " LEFT OUTER JOIN " or " INNER JOIN "),
+                self.process(join.right, asfrom=True, **kwargs),
+                " ON ",
+                self.process(join.onclause, **kwargs),
+            )
+        )
+
+    def for_update_clause(self, select, **kw):
+        return ""
+
+    def limit_clause(self, select):
+        # see: https://www.cubrid.org/manual/en/9.3.0/sql/query/select.html#limit-clause
+        limit, offset = select._limit, select._offset
+        if (limit, offset) == (None, None):
+            return ""
+        elif limit is None and offset is not None:
+            return " \n LIMIT %s, 1073741823" % (
+                self.process(sql.literal(offset))
+            )
+        elif offset is not None:
+            return " \n LIMIT %s, %s" % (
+                self.process(sql.literal(offset)),
+                self.process(sql.literal(limit)),
+            )
+        else:
+            return " \n LIMIT %s" % (self.process(sql.literal(limit)),)
+
+    def update_limit_clause(self, update_stmt):
+        # see: https://www.cubrid.org/manual/en/9.3.0/sql/query/update.html
+        limit = update_stmt.kwargs.get(f"{self.dialect.name}_limit", None)
+        if limit:
+            return f"LIMIT {limit}"
+        else:
+            return None
+
+    def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
+
+        return ", ".join(
+            t._compiler_dispatch(self, asfrom=True, **kw)
+            for t in [from_table] + list(extra_froms)
+        )
+
+    def update_from_clause(
+        self, update_stmt, from_table, extra_froms, from_hints, **kw
+    ):
+        return None
 
 
 class CubridDDLCompiler(compiler.DDLCompiler):
