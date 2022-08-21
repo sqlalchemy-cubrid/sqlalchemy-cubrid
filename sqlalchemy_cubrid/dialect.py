@@ -12,6 +12,73 @@ from sqlalchemy_cubrid.compiler import CubridCompiler
 from sqlalchemy_cubrid.compiler import CubridDDLCompiler
 from sqlalchemy_cubrid.compiler import CubridTypeCompiler
 
+from sqlalchemy import types as sqltypes
+from sqlalchemy.types import CLOB
+from sqlalchemy.types import DATE
+from sqlalchemy.types import DATETIME
+from sqlalchemy.types import INTEGER
+from sqlalchemy.types import TIME
+from sqlalchemy.types import TIMESTAMP
+
+from sqlalchemy_cubrid.types import BIGINT
+from sqlalchemy_cubrid.types import BIT
+from sqlalchemy_cubrid.types import BLOB
+from sqlalchemy_cubrid.types import CHAR
+from sqlalchemy_cubrid.types import VARCHAR
+from sqlalchemy_cubrid.types import DECIMAL
+from sqlalchemy_cubrid.types import DOUBLE
+from sqlalchemy_cubrid.types import FLOAT
+from sqlalchemy_cubrid.types import SEQUENCE
+from sqlalchemy_cubrid.types import MONETARY
+from sqlalchemy_cubrid.types import MULTISET
+from sqlalchemy_cubrid.types import NCHAR
+from sqlalchemy_cubrid.types import NVARCHAR
+from sqlalchemy_cubrid.types import NUMERIC
+from sqlalchemy_cubrid.types import OBJECT
+from sqlalchemy_cubrid.types import SET
+from sqlalchemy_cubrid.types import SMALLINT
+from sqlalchemy_cubrid.types import STRING
+
+colspecs = {
+    sqltypes.Numeric: NUMERIC,
+    sqltypes.Float: FLOAT,
+    sqltypes.Time: TIME,
+}
+
+# ischema names is used for reflecting columns (get_columns)
+ischema_names = {
+    "bigint": BIGINT,
+    "bit": BIT,
+    "bit varying": BIT,
+    "blob": BLOB,
+    "char": CHAR,
+    "character varying": VARCHAR,
+    "clob": CLOB,
+    "date": DATE,
+    "datetime": DATETIME,
+    "decimal": DECIMAL,
+    "double": DOUBLE,
+    "float": FLOAT,
+    "integer": INTEGER,
+    "list": SEQUENCE,
+    "monetary": MONETARY,
+    "multiset": MULTISET,
+    "nchar": NCHAR,
+    "nvarchar": NVARCHAR,
+    "numeric": NUMERIC,
+    "object": OBJECT,
+    "sequence": SEQUENCE,
+    "set": SET,
+    "smallint": SMALLINT,
+    "short": SMALLINT,
+    "string": STRING,
+    "time": TIME,
+    "timestamp": TIMESTAMP,
+    "varbit": BIT,
+    "varchar": VARCHAR,
+    "varnchar": NVARCHAR,
+}
+
 
 class CubridDialect(default.DefaultDialect):
     name = "cubrid"
@@ -23,13 +90,17 @@ class CubridDialect(default.DefaultDialect):
     preparer = CubridIdentifierPreparer
     execution_ctx_cls = CubridExecutionContext
 
+    colspecs = colspecs
+    ischema_names = ischema_names
+
     # https://www.cubrid.org/manual/en/9.3.0/sql/identifier.html
     max_identifier_length = 254
     max_index_name_length = 254
     max_constraint_name_length = 254
 
-    def __init__(self, **kwargs):
+    def __init__(self, isolation_level=None, **kwargs):
         super(CubridDialect, self).__init__(**kwargs)
+        isolation_level = isolation_level
 
     @classmethod
     def dbapi(cls):
@@ -218,7 +289,14 @@ class CubridDialect(default.DefaultDialect):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.on_connect`.
         """
-        return None
+        if self.isolation_level:
+
+            def connect(conn):
+                self.set_isolation_level(conn, self.isolation_level)
+
+            return connect
+        else:
+            return None
 
     def reset_isolation_level(self, dbapi_conn):
         """
@@ -240,17 +318,36 @@ class CubridDialect(default.DefaultDialect):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.set_isolation_level`.
         """
-        return None
+        cursor = dbapi_conn.cursor()
+        cursor.execute(f"SET TRANSACTION ISOLATION LEVEL {level}")
+        cursor.execute("COMMIT")
+        cursor.close()
+
+    def get_isolation_level_spec(self, dbapi_conn):
+        return (
+            "SERIALIZABLE",  # 6
+            "REPEATABLE READ SCHEMA, REPETABLE READ INSTANCES",  # 5
+            "REPEATABLE READ SCHEMA, READ COMMITTED INSTANCES",  # 4
+            "CURSOR STABILITY",  # 4
+            "REPEATABLE READ SCHEMA, READ UNCOMMITTED INSTANCES",  # 3
+            "READ COMMITTED SCHEMA, READ COMMITTED INSTANCES",  # 2
+            "READ COMMITTED SCHEMA, READ UNCOMMITTED INSTANCES",  # 1
+        )
 
     def get_isolation_level(self, dbapi_conn):
         """Given a DBAPI connection, return its isolation level.
 
         :param dbapi_conn:
+        see: https://www.cubrid.org/manual/en/9.3.0/sql/transaction.html?highlight=isolation%20level#transaction-isolation-level
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_isolation_level`.
         """
-        return None
+        cursor = dbapi_conn.cursor()
+        cursor.execute("GET TRANSACTION ISOLATION LEVEL")
+        val = cursor.fetchone()[0]
+        cursor.close()
+        return val.upper()
 
 
 dialect = CubridDialect
