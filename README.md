@@ -19,7 +19,7 @@ Usage
 -----
 
 ```python
-engine = create_engine("cubrid://dba:1234@localhost:33000/demodb")
+engine = create_engine("cubrid+cubrid://dba:1234@localhost:33000/demodb")
 connection = engine.connect()
 ```
 
@@ -27,5 +27,5 @@ Tests
 -----
 
 ```python
-py.test --dburi:cubrid://user:password@host:port
+py.test --dburi cubrid+cubrid://user:password@host:port/demodb
 ```
