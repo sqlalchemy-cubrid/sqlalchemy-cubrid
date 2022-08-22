@@ -20,7 +20,7 @@ PORT = os.environ.get("PORT")
 DBNAME = os.environ.get("DBNAME")
 
 engine = create_engine(
-    f"cubrid://{USERNAME}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}"
+    f"cubrid+cubrid://{USERNAME}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}"
 )
 
 from sqlalchemy import MetaData, Table, Column, Integer, String
