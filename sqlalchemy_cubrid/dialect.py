@@ -103,7 +103,7 @@ class CubridDialect(default.DefaultDialect):
 
     def __init__(self, isolation_level=None, **kwargs):
         super(CubridDialect, self).__init__(**kwargs)
-        isolation_level = isolation_level
+        self.isolation_level = isolation_level
 
     # Data Type
     supports_native_enum = False
