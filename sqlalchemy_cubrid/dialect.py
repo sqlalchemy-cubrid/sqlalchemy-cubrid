@@ -6,6 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy.sql import text
+from sqlalchemy.engine import reflection
 from sqlalchemy.engine import default
 from sqlalchemy_cubrid.base import CubridExecutionContext
 from sqlalchemy_cubrid.base import CubridIdentifierPreparer
@@ -212,6 +213,7 @@ class CubridDialect(default.DefaultDialect):
         foreign_keys = []
         return foreign_keys
 
+    @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
         """
         Return a list of table names for `schema`.
@@ -230,10 +232,11 @@ class CubridDialect(default.DefaultDialect):
                     "SELECT * FROM db_class WHERE class_type = 'CLASS' AND is_system_class='NO'"
                 )
             )
-            table_names = [r[0] for r in result]
+            table_names = [row[0] for row in result]
 
         return table_names
 
+    @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
         """Return a list of all view names available in the database.
 
@@ -247,12 +250,9 @@ class CubridDialect(default.DefaultDialect):
         view_names = []
         if schema is None:
             result = connection.execute(
-                text(
-                    "SELECT * FROM db_class",
-                    "WHERE class_type = 'CLASS' AND is_system_class='NO'",
-                )
+                text("SELECT * FROM db_class WHERE class_type = 'VCLASS'")
             )
-        view_names = [r[0] for r in result]
+        view_names = [row[0] for row in result]
         return view_names
 
     def get_view_definition(self, connection, view_name, schema=None, **kw):
