@@ -172,7 +172,7 @@ class CubridDialect(default.DefaultDialect):
         """
         Return information about columns in `table_name`.
 
-        :param connection:
+        :param connection: DBAPI connection
         :param table_name:
         :param schema:
         :rtype: list[str]
@@ -187,7 +187,7 @@ class CubridDialect(default.DefaultDialect):
         """
         Return information about the primary key constraint on table_name`
 
-        :param connection:
+        :param connection: DBAPI connection
         :param table_name:
         :param schema:
         :rtype: dict[str, list[str]]
@@ -202,7 +202,7 @@ class CubridDialect(default.DefaultDialect):
         """
         Return information about the primary key constraint on table_name`
 
-        :param connection:
+        :param connection: DBAPI connection
         :param table_name:
         :param schema:
         :rtype: list[]
@@ -218,7 +218,7 @@ class CubridDialect(default.DefaultDialect):
         """
         Return a list of table names for `schema`.
 
-        :param connection:
+        :param connection: DBAPI connection
         :param schema: schema name to query, if not the default schema.
         :rtype: list[str]
 
@@ -240,7 +240,7 @@ class CubridDialect(default.DefaultDialect):
     def get_view_names(self, connection, schema=None, **kw):
         """Return a list of all view names available in the database.
 
-        :param connection:
+        :param connection: DBAPI connection
         :param schema: schema name to query, if not the default schema.
         :rtype: list[str]
 
@@ -258,7 +258,7 @@ class CubridDialect(default.DefaultDialect):
     def get_view_definition(self, connection, view_name, schema=None, **kw):
         """Return view definition.
 
-        :param connection:
+        :param connection: DBAPI connection
         :param view_name:
         :param schema: schema name to query, if not the default schema.
         :rtype: str
@@ -272,7 +272,7 @@ class CubridDialect(default.DefaultDialect):
     def get_indexes(self, connection, table_name, schema=None, **kw):
         """Return information about indexes in `table_name`.
 
-        :param connection:
+        :param connection: DBAPI connection
         :param view_name:
         :param schema: schema name to query, if not the default schema.
         :rtype: list[]
@@ -288,7 +288,7 @@ class CubridDialect(default.DefaultDialect):
     ):
         """Return information about unique constraints in `table_name`.
 
-        :param connection:
+        :param connection: DBAPI connection
         :param view_name:
         :param schema: schema name to query, if not the default schema.
         :rtype: list[]
@@ -300,22 +300,32 @@ class CubridDialect(default.DefaultDialect):
         return unique_constraints
 
     def has_table(self, connection, table_name, schema=None, **kw):
-        """Return information about unique constraints in `table_name`.
+        """Check the existence of a particular table in the database.
 
-        :param connection:
-        :param view_name:
+        :param connection: DBAPI connection
+        :param table_name:
         :param schema: schema name to query, if not the default schema.
+        :rtype: bool
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.has_table`.
         """
-        return None
+        have = False
+        if schema is None:
+            result = connection.execute(
+                text(
+                    f"SELECT * FROM db_class WHERE class_type = 'CLASS' AND is_system_class='NO' AND class_name='{table_name}'"
+                )
+            )
+            have = result.fetchone() is not None
+            return have
+        return have
 
     def has_index(self, connection, table_name, index_name, schema=None):
         """
         Check the existence of a particular index name in the database.
 
-        :param connection:
+        :param connection: DBAPI connection
         :param view_name:
         :param schema: schema name to query, if not the default schema.
 
