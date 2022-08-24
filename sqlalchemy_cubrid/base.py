@@ -376,9 +376,9 @@ class CubridIdentifierPreparer(compiler.IdentifierPreparer):
     def __init__(
         self,
         dialect,
-        initial_quote="[",
+        initial_quote='"',
         final_quote=None,
-        escape_quote="]",
+        escape_quote='"',
         omit_schema=False,
     ):
 
