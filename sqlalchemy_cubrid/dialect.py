@@ -5,6 +5,7 @@
 # This module is part of sqlalchemy-cubrid and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+from sqlalchemy.sql import text
 from sqlalchemy.engine import default
 from sqlalchemy_cubrid.base import CubridExecutionContext
 from sqlalchemy_cubrid.base import CubridIdentifierPreparer
@@ -216,13 +217,17 @@ class CubridDialect(default.DefaultDialect):
         Return a list of table names for `schema`.
 
         :param connection:
-        :param schema:
+        :param schema: schema name to query, if not the default schema.
         :rtype: list[str]
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_table_names`.
         """
         table_names = []
+        if schema is None:
+            result = connection.execute(text("SHOW TABLES"))
+            table_names = [r[0] for r in result]
+
         return table_names
 
     def get_view_names(self, connection, schema=None, **kw):
