@@ -225,7 +225,11 @@ class CubridDialect(default.DefaultDialect):
         """
         table_names = []
         if schema is None:
-            result = connection.execute(text("SHOW TABLES"))
+            result = connection.execute(
+                text(
+                    "SELECT * FROM db_class WHERE class_type = 'CLASS' AND is_system_class='NO'"
+                )
+            )
             table_names = [r[0] for r in result]
 
         return table_names
@@ -241,6 +245,14 @@ class CubridDialect(default.DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_names`.
         """
         view_names = []
+        if schema is None:
+            result = connection.execute(
+                text(
+                    "SELECT * FROM db_class",
+                    "WHERE class_type = 'CLASS' AND is_system_class='NO'",
+                )
+            )
+        view_names = [r[0] for r in result]
         return view_names
 
     def get_view_definition(self, connection, view_name, schema=None, **kw):
