@@ -5,6 +5,7 @@
 # This module is part of sqlalchemy-cubrid and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+from cmd import IDENTCHARS
 import re
 from sqlalchemy.sql import text
 from sqlalchemy.sql import util
@@ -197,6 +198,7 @@ class CubridDialect(default.DefaultDialect):
             default = row[4]
             autoincrement = "auto_increment" in row[5]
 
+            # TODO: Need to check other types.
             if coltype_ in ("CHAR", "VARCHAR", "VARCHAR", "CHAR VARYING"):
                 coltype = re.sub(r"\(\d+\)", "", coltype_)
                 length = int(re.search("\(([\d,]+)\)", coltype_).group(1))
@@ -307,18 +309,42 @@ class CubridDialect(default.DefaultDialect):
         view_definition = ""
         return view_definition
 
+    @reflection.cache
     def get_indexes(self, connection, table_name, schema=None, **kw):
         """Return information about indexes in `table_name`.
 
         :param connection: DBAPI connection
         :param table_name: table name to query
         :param schema: schema name to query, if not the default schema.
-        :rtype: list[]
+        :rtype: list[dict]
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_indexes`.
         """
+        # https://www.cubrid.org/manual/en/9.3.0/sql/query/show.html#show-index
         indexes = []
+        idict = {}
+        result = connection.execute(text(f"SHOW INDEXES IN {table_name}"))
+        for row in result:
+            name = row[2]
+            result = connection.execute(
+                text(f"SELECT * from _db_index WHERE index_name = '{name}'")
+            )
+            is_primary_key = result.fetchone()[6]
+
+            if not is_primary_key:
+                if name in idict:
+                    idict[name]["column_name"].append(row[4])
+                else:
+                    idict[name] = {
+                        "column_name": [row[4]],
+                        "unique": row[1] == 0,
+                        "type": row[10],
+                    }
+
+        for key, value in idict.items():
+            value["name"] = key
+            indexes.append(value)
 
         return indexes
 
@@ -376,11 +402,10 @@ class CubridDialect(default.DefaultDialect):
         """
         Return a callable which sets up a newly created DBAPI connection.
 
-        see: https://docs.sqlalchemy.org/en/14/core/internals.html?highlight=on_connect#sqlalchemy.engine.default.DefaultDialect.on_connect
-
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.on_connect`.
         """
+        # see: https://docs.sqlalchemy.org/en/14/core/internals.html?highlight=on_connect#sqlalchemy.engine.default.DefaultDialect.on_connect
         if self.isolation_level:
 
             def connect(conn):
@@ -430,11 +455,11 @@ class CubridDialect(default.DefaultDialect):
         """Given a DBAPI connection, return its isolation level.
 
         :param dbapi_conn:
-        see: https://www.cubrid.org/manual/en/9.3.0/sql/transaction.html?highlight=isolation%20level#transaction-isolation-level
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_isolation_level`.
         """
+        # see: https://www.cubrid.org/manual/en/9.3.0/sql/transaction.html?highlight=isolation%20level#transaction-isolation-level
 
         # TODO:
         # cursor = dbapi_conn.cursor()
