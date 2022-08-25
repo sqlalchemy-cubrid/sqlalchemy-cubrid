@@ -226,6 +226,7 @@ class CubridDialect(default.DefaultDialect):
             columns.append(cdit)
         return columns
 
+    @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         """
         Return information about the primary key constraint on table_name`
@@ -239,6 +240,15 @@ class CubridDialect(default.DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
         """
         pk_constraint = {}
+        result = connection.execute("SHOW COLUMNS IN '{table_name}'")
+        constraint_name = None
+        constrained_columns = []
+        for row in result:
+            if row[3] == "PRI":
+                constrained_columns.append(row[0])
+                # TODO: get constraint_name
+        pk_constraint["name"] = constraint_name
+        pk_constraint["constrained_columns"] = constrained_columns
         return pk_constraint
 
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
