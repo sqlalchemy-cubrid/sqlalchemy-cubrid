@@ -430,6 +430,12 @@ class CubridDialect(default.DefaultDialect):
         else:
             return None
 
+    def _get_default_schema_name(self, connection):
+        """Return the string name of the currently selected schema from
+        the given connection.
+        """
+        return connection.execute(text("SELECT SCHEMA()")).scalar()
+
     def reset_isolation_level(self, dbapi_conn):
         """
         Given a DBAPI connection, revert its isolation to the default.
