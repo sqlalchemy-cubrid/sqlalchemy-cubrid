@@ -215,17 +215,6 @@ class BLOB(sqltypes.LargeBinary):
     __visit_name__ = "BLOB"
 
 
-class MONETARY(_FloatType):
-    """CUBRID MONETARY type"""
-
-    __visit_name__ = "MONETARY"
-
-
-class OBJECT(_StringType):
-    """CUBRID OBJECT type."""
-
-    __visit_name__ = "OBJECT"
-
 
 class SET(_StringType):
     """CUBRID SET type."""
