@@ -17,29 +17,30 @@ from sqlalchemy_cubrid.compiler import CubridDDLCompiler
 from sqlalchemy_cubrid.compiler import CubridTypeCompiler
 
 from sqlalchemy import types as sqltypes
-from sqlalchemy.types import CLOB
+from sqlalchemy_cubrid.types import SMALLINT
+from sqlalchemy.types import INTEGER
+from sqlalchemy_cubrid.types import BIGINT
+from sqlalchemy_cubrid.types import NUMERIC
+from sqlalchemy_cubrid.types import DECIMAL
+from sqlalchemy_cubrid.types import FLOAT
+from sqlalchemy_cubrid.types import DOUBLE
+from sqlalchemy_cubrid.types import DOUBLE_PRECISION
 from sqlalchemy.types import DATE
 from sqlalchemy.types import DATETIME
-from sqlalchemy.types import INTEGER
 from sqlalchemy.types import TIME
 from sqlalchemy.types import TIMESTAMP
-
-from sqlalchemy_cubrid.types import BIGINT
 from sqlalchemy_cubrid.types import BIT
-from sqlalchemy_cubrid.types import BLOB
 from sqlalchemy_cubrid.types import CHAR
 from sqlalchemy_cubrid.types import VARCHAR
-from sqlalchemy_cubrid.types import DECIMAL
-from sqlalchemy_cubrid.types import DOUBLE
-from sqlalchemy_cubrid.types import FLOAT
-from sqlalchemy_cubrid.types import SEQUENCE
-from sqlalchemy_cubrid.types import MULTISET
 from sqlalchemy_cubrid.types import NCHAR
 from sqlalchemy_cubrid.types import NVARCHAR
-from sqlalchemy_cubrid.types import NUMERIC
-from sqlalchemy_cubrid.types import SET
-from sqlalchemy_cubrid.types import SMALLINT
 from sqlalchemy_cubrid.types import STRING
+from sqlalchemy_cubrid.types import BLOB
+from sqlalchemy_cubrid.types import CLOB
+from sqlalchemy_cubrid.types import SET
+from sqlalchemy_cubrid.types import MULTISET
+from sqlalchemy_cubrid.types import SEQUENCE
+
 
 colspecs = {
     sqltypes.Numeric: NUMERIC,
@@ -60,18 +61,19 @@ ischema_names = {
     "FLOAT": FLOAT,
     # REAL
     "DOUBLE": DOUBLE,
-    #  DOUBLE PRECISION
+    "DOUBLE PRECISION": DOUBLE_PRECISION,
     # Date/Time Types
     "DATE": DATE,
     "TIME": TIME,
     "TIMESTAMP": TIMESTAMP,
     "DATETIME": DATETIME,
     # Bit Strings
-    "BIT": BIT,
-    "BIT VARYING": BIT,
+    "BIT": BIT,  # BIT(n)
+    "BIT VARYING": BIT,  # BIT VARYING(n)
     # Character Strings
-    "CHAR": CHAR,
-    "VARCHAR": VARCHAR,
+    "CHAR": CHAR,  # CHAR(n)
+    "VARCHAR": VARCHAR,  # VARCHAR(n)
+    "NCHAR": NCHAR,
     "CHAR VARYING": NVARCHAR,
     "STRING": STRING,
     # BLOB/CLOB Data Types
