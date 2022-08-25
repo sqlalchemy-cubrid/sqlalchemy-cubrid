@@ -5,7 +5,9 @@
 # This module is part of sqlalchemy-cubrid and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import re
 from sqlalchemy.sql import text
+from sqlalchemy.sql import util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine import default
 from sqlalchemy_cubrid.base import CubridExecutionContext
@@ -31,12 +33,10 @@ from sqlalchemy_cubrid.types import DECIMAL
 from sqlalchemy_cubrid.types import DOUBLE
 from sqlalchemy_cubrid.types import FLOAT
 from sqlalchemy_cubrid.types import SEQUENCE
-from sqlalchemy_cubrid.types import MONETARY
 from sqlalchemy_cubrid.types import MULTISET
 from sqlalchemy_cubrid.types import NCHAR
 from sqlalchemy_cubrid.types import NVARCHAR
 from sqlalchemy_cubrid.types import NUMERIC
-from sqlalchemy_cubrid.types import OBJECT
 from sqlalchemy_cubrid.types import SET
 from sqlalchemy_cubrid.types import SMALLINT
 from sqlalchemy_cubrid.types import STRING
@@ -48,37 +48,40 @@ colspecs = {
 }
 
 # ischema names is used for reflecting columns (get_columns)
+# see: https://www.cubrid.org/manual/en/9.3.0/sql/datatype.html
 ischema_names = {
-    "bigint": BIGINT,
-    "bit": BIT,
-    "bit varying": BIT,
-    "blob": BLOB,
-    "char": CHAR,
-    "character varying": VARCHAR,
-    "clob": CLOB,
-    "date": DATE,
-    "datetime": DATETIME,
-    "decimal": DECIMAL,
-    "double": DOUBLE,
-    "float": FLOAT,
-    "integer": INTEGER,
-    "list": SEQUENCE,
-    "monetary": MONETARY,
-    "multiset": MULTISET,
-    "nchar": NCHAR,
-    "nvarchar": NVARCHAR,
-    "numeric": NUMERIC,
-    "object": OBJECT,
-    "sequence": SEQUENCE,
-    "set": SET,
-    "smallint": SMALLINT,
-    "short": SMALLINT,
-    "string": STRING,
-    "time": TIME,
-    "timestamp": TIMESTAMP,
-    "varbit": BIT,
-    "varchar": VARCHAR,
-    "varnchar": NVARCHAR,
+    # Numeric Types
+    "SHORT": SMALLINT,
+    "SMALLINT": SMALLINT,
+    "INTEGER": INTEGER,
+    "BIGINT": BIGINT,
+    "NUMERIC": NUMERIC,
+    "DECIMAL": DECIMAL,
+    "FLOAT": FLOAT,
+    # REAL
+    "DOUBLE": DOUBLE,
+    #  DOUBLE PRECISION
+    # Date/Time Types
+    "DATE": DATE,
+    "TIME": TIME,
+    "TIMESTAMP": TIMESTAMP,
+    "DATETIME": DATETIME,
+    # Bit Strings
+    "BIT": BIT,
+    "BIT VARYING": BIT,
+    # Character Strings
+    "CHAR": CHAR,
+    "VARCHAR": VARCHAR,
+    "CHAR VARYING": NVARCHAR,
+    "STRING": STRING,
+    # BLOB/CLOB Data Types
+    "BLOB": BLOB,
+    "CLOB": CLOB,
+    # Collection Types
+    "SET": SET,
+    "MULTISET": MULTISET,
+    "SEQUENCE": SEQUENCE,
+    "SEQUENCE": SEQUENCE,
 }
 
 
@@ -168,19 +171,53 @@ class CubridDialect(default.DefaultDialect):
     def initialize(self, connection):
         default.DefaultDialect.initialize(self, connection)
 
+    @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
         """
         Return information about columns in `table_name`.
 
         :param connection: DBAPI connection
-        :param table_name:
-        :param schema:
-        :rtype: list[str]
+        :param table_name: table name to query
+        :param schema: schema name to query, if not the default schema.
+        :rtype: list[dict]
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_columns`.
         """
+        # see: https://www.cubrid.org/manual/en/9.3.0/sql/query/show.html#show-columns
         columns = []
+
+        result = connection.execute(text(f"SHOW COLUMNS IN {table_name}"))
+        for row in result:
+            colname = row[0]
+            coltype_ = row[1]
+            nullable = not row[2] == "YES"
+            default = row[4]
+            autoincrement = "auto_increment" in row[5]
+
+            if coltype_ in ("CHAR", "VARCHAR", "VARCHAR", "CHAR VARYING"):
+                coltype = re.sub(r"\(\d+\)", "", coltype_)
+                length = int(re.search("\(([\d,]+)\)", coltype_).group(1))
+                coltype = self.ischema_names.get(coltype)(length)
+            else:
+                coltype = re.sub(r"\(\d+\)", "", coltype_)
+                try:
+                    coltype = self.ischema_names[coltype]
+                except KeyError:
+                    util.warn(
+                        "Did not recognize type '%s' of column '%s'"
+                        % (coltype, colname)
+                    )
+                    coltype = sqltypes.NULLTYPE
+
+            cdit = {
+                "name": colname,
+                "type": coltype,
+                "nullable": nullable,
+                "default": default,
+                "autoincrement": autoincrement,
+            }
+            columns.append(cdit)
         return columns
 
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
@@ -189,7 +226,7 @@ class CubridDialect(default.DefaultDialect):
 
         :param connection: DBAPI connection
         :param table_name:
-        :param schema:
+        :param schema: schema name to query, if not the default schema.
         :rtype: dict[str, list[str]]
 
         Overrides interface
@@ -204,7 +241,7 @@ class CubridDialect(default.DefaultDialect):
 
         :param connection: DBAPI connection
         :param table_name:
-        :param schema:
+        :param schema: schema name to query, if not the default schema.
         :rtype: list[]
 
         Overrides interface
@@ -248,10 +285,9 @@ class CubridDialect(default.DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_names`.
         """
         view_names = []
-        if schema is None:
-            result = connection.execute(
-                text("SELECT * FROM db_class WHERE class_type = 'VCLASS'")
-            )
+        result = connection.execute(
+            text("SELECT * FROM db_class WHERE class_type = 'VCLASS'")
+        )
         view_names = [row[0] for row in result]
         return view_names
 
@@ -273,7 +309,7 @@ class CubridDialect(default.DefaultDialect):
         """Return information about indexes in `table_name`.
 
         :param connection: DBAPI connection
-        :param view_name:
+        :param table_name: table name to query
         :param schema: schema name to query, if not the default schema.
         :rtype: list[]
 
@@ -281,6 +317,7 @@ class CubridDialect(default.DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_indexes`.
         """
         indexes = []
+
         return indexes
 
     def get_unique_constraints(
@@ -303,7 +340,7 @@ class CubridDialect(default.DefaultDialect):
         """Check the existence of a particular table in the database.
 
         :param connection: DBAPI connection
-        :param table_name:
+        :param table_name: table name to query
         :param schema: schema name to query, if not the default schema.
         :rtype: bool
 
@@ -311,14 +348,13 @@ class CubridDialect(default.DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.has_table`.
         """
         have = False
-        if schema is None:
-            result = connection.execute(
-                text(
-                    f"SELECT * FROM db_class WHERE class_type = 'CLASS' AND is_system_class='NO' AND class_name='{table_name}'"
-                )
+
+        result = connection.execute(
+            text(
+                f"SELECT * FROM db_class WHERE class_type = 'CLASS' AND is_system_class='NO' AND class_name='{table_name}'"
             )
-            have = result.fetchone() is not None
-            return have
+        )
+        have = result.fetchone() is not None
         return have
 
     def has_index(self, connection, table_name, index_name, schema=None):
