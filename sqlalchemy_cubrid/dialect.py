@@ -137,6 +137,8 @@ class CubridDialect(default.DefaultDialect):
     supports_multivalues_insert = True
     postfetch_lastrowid = False
 
+    requires_name_normalize = True
+
     @classmethod
     def dbapi(cls):
         """Hook to the dbapi2.0 implementation's module"""
@@ -412,6 +414,19 @@ class CubridDialect(default.DefaultDialect):
                 self.set_isolation_level(conn, self.isolation_level)
 
             return connect
+        else:
+            return None
+
+    def _get_server_version_info(self, connection):
+        """Retrieve the server version info from the given connection.
+
+        Returns a tuple of (`major`, `minor`, `build`, 'patch version'), four integers
+        representing the version of the attached server.
+        """
+        versions = connection.execute(text("SELECT VERSION()")).scalar()
+        m = re.match(r"(\d+).(\d+).(\d+).(\d+)", versions)
+        if m:
+            return tuple(int(x) for x in m.group(1, 2, 3, 4))
         else:
             return None
 
