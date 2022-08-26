@@ -307,11 +307,12 @@ class CubridDialect(default.DefaultDialect):
         view_names = [row[0] for row in result]
         return view_names
 
+    @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
         """Return view definition.
 
         :param connection: DBAPI connection
-        :param view_name:
+        :param view_name: view_name name to query
         :param schema: schema name to query, if not the default schema.
         :rtype: str
 
@@ -319,6 +320,8 @@ class CubridDialect(default.DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
         """
         view_definition = ""
+        result = connection.execute(text(f"SHOW CREATE VIEW {view_name}"))
+        view_definition = result.fetchone()[1]
         return view_definition
 
     @reflection.cache
