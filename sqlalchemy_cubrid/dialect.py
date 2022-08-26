@@ -258,12 +258,13 @@ class CubridDialect(default.DefaultDialect):
         :param connection: DBAPI connection
         :param table_name:
         :param schema: schema name to query, if not the default schema.
-        :rtype: list[]
+        :rtype: list[dict]
 
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.get_foreign_keys`.
         """
         foreign_keys = []
+
         return foreign_keys
 
     @reflection.cache
@@ -421,7 +422,7 @@ class CubridDialect(default.DefaultDialect):
         :meth:`~sqlalchemy.engine.interfaces.Dialect.on_connect`.
         """
         # see: https://docs.sqlalchemy.org/en/14/core/internals.html?highlight=on_connect#sqlalchemy.engine.default.DefaultDialect.on_connect
-        if self.isolation_level:
+        if self.isolation_level is not None:
 
             def connect(conn):
                 self.set_isolation_level(conn, self.isolation_level)
@@ -469,6 +470,9 @@ class CubridDialect(default.DefaultDialect):
         Overrides interface
         :meth:`~sqlalchemy.engine.interfaces.Dialect.set_isolation_level`.
         """
+        if hasattr(dbapi_conn, "connection"):
+            dbapi_conn = dbapi_conn.connection
+
         cursor = dbapi_conn.cursor()
         cursor.execute(f"SET TRANSACTION ISOLATION LEVEL {level}")
         cursor.execute("COMMIT")
@@ -495,13 +499,12 @@ class CubridDialect(default.DefaultDialect):
         """
         # see: https://www.cubrid.org/manual/en/9.3.0/sql/transaction.html?highlight=isolation%20level#transaction-isolation-level
 
-        # TODO:
-        # cursor = dbapi_conn.cursor()
-        # cursor.execute("GET TRANSACTION ISOLATION LEVEL")
-        # val = cursor.fetchone()[0]
-        # cursor.close()
-        # return val.upper()
-        return None
+        cursor = dbapi_conn.cursor()
+        cursor.execute("GET TRANSACTION ISOLATION LEVEL TO X")
+        cursor.execute("SELECT X")
+        val = cursor.fetchone()[0]
+        cursor.close()
+        return val
 
 
 dialect = CubridDialect
