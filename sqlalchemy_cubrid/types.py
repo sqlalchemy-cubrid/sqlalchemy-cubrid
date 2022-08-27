@@ -5,6 +5,7 @@
 # This module is part of sqlalchemy-cubrid and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+from sqlalchemy import inspect
 from sqlalchemy.sql import sqltypes
 
 # see: https://www.cubrid.org/manual/en/9.3.0/sql/datatype.html
@@ -50,10 +51,20 @@ class _StringType(sqltypes.String):
         )
 
 
+class SMALLINT(_IntegerType, sqltypes.SMALLINT):
+    """CUBRID SMALLINT type."""
+
+    __visit_name__ = "SMALLINT"
+
+
+class BIGINT(_IntegerType, sqltypes.BIGINT):
+    """CUBRID BIGINT type."""
+
+    __visit_name__ = "BIGINT"
+
+
 class NUMERIC(_NumericType, sqltypes.NUMERIC):
-    """CUBRID NUMERIC type.
-    Default value is NUMERIC(15,0)
-    """
+    """CUBRID NUMERIC type."""
 
     __visit_name__ = "NUMERIC"
 
@@ -62,6 +73,7 @@ class NUMERIC(_NumericType, sqltypes.NUMERIC):
 
         :param precision: Total digits in this number.  If scale and precision
           are both None, values are stored to limits allowed by the server.
+
         :param scale: The number of digits after the decimal point.
 
         """
@@ -75,11 +87,52 @@ class DECIMAL(_NumericType, sqltypes.DECIMAL):
 
     def __init__(self, precision=None, scale=None, **kw):
         """Construct a DECIMAL.
-        :param precision: max number of digits that can be stored (range from 1 thru 38)
-        :param scale: number of fractional digits of :param precision: to the
-                    right of the decimal point  (range from 0 to :param precision:)
+
+        :param precision: Total digits in this number.  If scale and precision
+          are both None, values are stored to limits allowed by the server.
+          (range from 1 thru 38)
+
+        :param scale: The number of digits following the decimal point.
         """
         super(DECIMAL, self).__init__(precision=precision, scale=scale, **kw)
+
+
+class FLOAT(_FloatType, sqltypes.FLOAT):
+    """CUBRID FLOAT type."""
+
+    __visit_name__ = "FLOAT"
+
+    def __init__(self, precision=7, **kw):
+        """Construct a FLOAT.
+
+        :param precision: Defaults to 7: Total digits in this number.  If scale and precision
+          are both None, values are stored to limits allowed by the server.
+          (range from 1 thru 38)
+
+        """
+        super(FLOAT, self).__init__(precision=precision, **kw)
+
+    def bind_processor(self, dialect):
+        return None
+
+
+class REAL(_FloatType, sqltypes.FLOAT):
+    """CUBRID REAL type."""
+
+    __visit_name__ = "REAL"
+
+    def __init__(self, precision=None, **kw):
+        """Construct a REAL.
+
+        :param precision: Total digits in this number.  If scale and precision
+          are both None, values are stored to limits allowed by the server.
+          (range from 1 thru 38)
+
+        """
+        super(FLOAT, self).__init__(precision=precision, **kw)
+
+    def bind_processor(self, dialect):
+        return None
 
 
 class DOUBLE(_FloatType):
@@ -88,33 +141,8 @@ class DOUBLE(_FloatType):
     __visit_name__ = "DOUBLE"
 
 
-class FLOAT(_FloatType, sqltypes.FLOAT):
-    """CUBRID FLOAT type."""
-
-    __visit_name__ = "FLOAT"
-
-    def __init__(self, precision=None, **kw):
-        """Construct a FLOAT.
-
-        :param precision: Total digits in this number.  If scale and precision
-          are both None, values are stored to limits allowed by the server.
-        """
-        super(FLOAT, self).__init__(precision=precision, **kw)
-
-    def bind_processor(self, dialect):
-        return None
-
-
-class SMALLINT(_IntegerType, sqltypes.SMALLINT):
-    """CUBRID SMALLINT type."""
-
-    __visit_name__ = "SMALLINT"
-
-
-class BIGINT(_IntegerType, sqltypes.BIGINT):
-    """CUBRID BIGINT type."""
-
-    __visit_name__ = "BIGINT"
+class DOUBLE_PRECISION(_FloatType):
+    __visit_name__ = "DOUBLE_PRECISION"
 
 
 class BIT(sqltypes.TypeEngine):
@@ -122,10 +150,10 @@ class BIT(sqltypes.TypeEngine):
 
     __visit_name__ = "BIT"
 
-    def __init__(self, length=None, varying=False):
+    def __init__(self, length=1, varying=False):
         """Construct a BIT.
 
-        :param length: Optional, number of bits.
+        :param length: Defaults to 1: Optional, number of bits.
         """
         if not varying:
             self.length = (
@@ -144,7 +172,7 @@ class CHAR(_StringType, sqltypes.CHAR):
     def __init__(self, length=None, **kwargs):
         """Construct a CHAR.
 
-        :param length: number of characters or bytes allocated.
+        :param length: The number of a character string.
         """
         super(CHAR, self).__init__(length=length, **kwargs)
 
@@ -157,26 +185,9 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
     def __init__(self, length=None, **kwargs):
         """Construct a VARCHAR.
 
-        :param length: number of characters or bytes allocated.
+        :param length: The number of a character string.
         """
         super(VARCHAR, self).__init__(length=length, **kwargs)
-
-
-class NVARCHAR(_StringType, sqltypes.NVARCHAR):
-    """CUBRID NVARCHAR type.
-    For variable-length character data in the server's configured national
-    character set.
-    """
-
-    __visit_name__ = "NVARCHAR"
-
-    def __init__(self, length=None, **kwargs):
-        """Construct a NVARCHAR.
-
-        :param length: number of characters or bytes allocated.
-        """
-        kwargs["national"] = True
-        super(NVARCHAR, self).__init__(length=length, **kwargs)
 
 
 class NCHAR(_StringType, sqltypes.NCHAR):
@@ -190,10 +201,27 @@ class NCHAR(_StringType, sqltypes.NCHAR):
     def __init__(self, length=None, **kwargs):
         """Construct a NCHAR.
 
-        :param length: number of characters or bytes allocated.
+        :param length: The number of a character string.
         """
         kwargs["national"] = True
         super(NCHAR, self).__init__(length=length, **kwargs)
+
+
+class NVARCHAR(_StringType, sqltypes.NVARCHAR):
+    """CUBRID NVARCHAR type.
+    For variable-length character data in the server's configured national
+    character set.
+    """
+
+    __visit_name__ = "NVARCHAR"
+
+    def __init__(self, length=None, **kwargs):
+        """Construct a NVARCHAR.
+
+        :param length: The number of a character string.
+        """
+        kwargs["national"] = True
+        super(NVARCHAR, self).__init__(length=length, **kwargs)
 
 
 class STRING(_StringType):
@@ -215,16 +243,10 @@ class BLOB(sqltypes.LargeBinary):
     __visit_name__ = "BLOB"
 
 
-class MONETARY(_FloatType):
-    """CUBRID MONETARY type"""
+class CLOB(sqltypes.Text):
+    """CUBRID CLOB type."""
 
-    __visit_name__ = "MONETARY"
-
-
-class OBJECT(_StringType):
-    """CUBRID OBJECT type."""
-
-    __visit_name__ = "OBJECT"
+    __visit_name__ = "CLOB"
 
 
 class SET(_StringType):
