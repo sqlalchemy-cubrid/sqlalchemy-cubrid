@@ -6,11 +6,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy.sql import compiler
+from sqlalchemy import types as sqltypes
 
 # ToDo: Need to implement the function through the method below
 # from sqlalchemy import exc
 # from sqlalchemy import schema as sa_schema
-# from sqlalchemy.types import Unicode
 # from sqlalchemy.ext.compiler import compiles
 # from sqlalchemy.sql.expression import Select
 # from sqlalchemy import exc, sql
@@ -105,9 +105,32 @@ class CubridCompiler(compiler.SQLCompiler):
     ):
         return None
 
-
 class CubridDDLCompiler(compiler.DDLCompiler):
-    pass
+    def get_column_specification(self, column, **kw):
+        """Builds column DDL."""
+
+        # see: https://www.cubrid.org/manual/en/9.3.0/sql/schema/table.html?highlight=auto_increment#column-definition
+        colspec = [
+            self.preparer.format_column(column),
+            self.dialect.type_compiler.process(column.type),
+        ]
+        default = self.get_column_default_string(column)
+        if default is not None:
+            colspec.append("DEFAULT " + default)
+
+        is_timestamp = isinstance(column.type, sqltypes.TIMESTAMP)
+        if not column.nullable and not is_timestamp:
+            colspec.append("NOT NULL")
+        elif column.nullable and is_timestamp and default is None:
+            colspec.append("NULL")
+
+        if (
+            column is column.table._autoincrement_column
+            and column.server_default is None
+        ):
+            colspec.append("AUTO_INCREMENT")
+
+        return " ".join(colspec)
 
 
 class CubridTypeCompiler(compiler.GenericTypeCompiler):
