@@ -105,7 +105,23 @@ class CubridCompiler(compiler.SQLCompiler):
     ):
         return None
 
+
 class CubridDDLCompiler(compiler.DDLCompiler):
+    def define_constraint_cascades(self, constraint):
+        text = ""
+
+        # see: https://www.cubrid.org/manual/en/9.3.0/sql/schema/table.html#foreign-key
+        # ON DELETE CASCADE | RESTRICT | NO ACTION | SET NULL
+        if constraint.ondelete:
+            text += f" ON DELTE {constraint.onupdate}"
+        else:
+            text += " ON DELETE RESTRICT"
+
+        if constraint.onupdate:
+            text += f" ON UPDATE {constraint.onupdate}"
+        else:
+            text += " ON UPDATE RESTRICT"
+
     def get_column_specification(self, column, **kw):
         """Builds column DDL."""
 
