@@ -6,6 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy.sql import compiler
+from sqlalchemy import exc
 from sqlalchemy import types as sqltypes
 
 # ToDo: Need to implement the function through the method below
@@ -108,10 +109,9 @@ class CubridCompiler(compiler.SQLCompiler):
 
 class CubridDDLCompiler(compiler.DDLCompiler):
     def define_constraint_cascades(self, constraint):
-        text = ""
-
         # see: https://www.cubrid.org/manual/en/9.3.0/sql/schema/table.html#foreign-key
         # ON DELETE CASCADE | RESTRICT | NO ACTION | SET NULL
+        text = ""
         if constraint.ondelete:
             text += f" ON DELTE {constraint.onupdate}"
         else:
@@ -124,7 +124,6 @@ class CubridDDLCompiler(compiler.DDLCompiler):
 
     def get_column_specification(self, column, **kw):
         """Builds column DDL."""
-
         # see: https://www.cubrid.org/manual/en/9.3.0/sql/schema/table.html?highlight=auto_increment#column-definition
         colspec = [
             self.preparer.format_column(column),
@@ -147,6 +146,44 @@ class CubridDDLCompiler(compiler.DDLCompiler):
             colspec.append("AUTO_INCREMENT")
 
         return " ".join(colspec)
+
+    def _verify_index_table(self, index):
+        if index.table is None:
+            raise exc.CompileError(
+                "Index '%s' is not associated " "with any table." % index.name
+            )
+
+    def visit_create_index(self, create):
+        # see: https://www.cubrid.org/manual/en/9.3.0/sql/schema/index.html#create-index
+        index = create.element
+        self._verify_index_table(index)
+        preparer = self.preparer
+
+        text = "CREATE "
+        if index.unique:
+            text += "UNIQUE "
+        if index.name is None:
+            raise exc.CompileError(
+                "CREATE INDEX requires that the index have a name"
+            )
+        text += f"{self._prepared_index_name(index, include_schema=False)} ON {preparer.format_table(index.table)} "
+
+        # TODO: index_col_desc
+        return text
+
+    def visit_drop_index(self, drop):
+        # see: https://www.cubrid.org/manual/en/9.3.0/sql/schema/index.html#drop-index
+        index = drop.element
+
+        text = "\nDROP"
+        if index.unique:
+            text += "UNIQUE "
+        text += (
+            f"INDEX {self._prepared_index_name(index, include_schema=False)} "
+        )
+
+        if index.table is not None:
+            text += f"ON {self.preparer.format_table(index.table)}"
 
 
 class CubridTypeCompiler(compiler.GenericTypeCompiler):
