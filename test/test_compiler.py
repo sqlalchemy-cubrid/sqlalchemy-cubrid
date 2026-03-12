@@ -1110,3 +1110,376 @@ class TestMergeCompilation:
         stmt = stmt.when_matched_then_update({"name": self.source.c.name})
         with pytest.raises(Exception):
             _compile(stmt)
+
+
+class TestCoverageEdgeCases:
+    """Tests for compiler.py uncovered edge-case branches."""
+
+    def test_visit_cast_none_type(self):
+        """compiler.py line 36: visit_cast when type_ processes to None."""
+        # Directly test the visit_cast method via the compiler
+        dialect = CubridDialect()
+        stmt = select(sa.cast(users.c.name, Integer))
+        compiler_obj = stmt.compile(dialect=dialect, compile_kwargs={"literal_binds": True})
+        # Create a mock cast element where typeclause processes to None
+        from unittest.mock import MagicMock
+        mock_cast = MagicMock()
+        mock_clause = MagicMock()
+        mock_self_group = MagicMock()
+        mock_cast.typeclause = MagicMock()
+        mock_cast.clause = mock_clause
+        mock_clause.self_group.return_value = mock_self_group
+        # Make process return None for typeclause, "col" for clause
+        original_process = compiler_obj.process
+        def patched_process(element, **kw):
+            if element is mock_cast.typeclause:
+                return None
+            if element is mock_self_group:
+                return "users.name"
+            return original_process(element, **kw)
+        compiler_obj.process = patched_process
+        result = compiler_obj.visit_cast(mock_cast)
+        assert result == "users.name"
+
+    def test_for_update_arg_none(self):
+        """compiler.py line 72: for_update_clause when _for_update_arg is None."""
+        # A plain SELECT without .with_for_update() should return empty string
+        stmt = select(users)
+        sql = _compile(stmt)
+        assert "FOR UPDATE" not in sql
+
+    def test_limit_clause_both_none(self):
+        """compiler.py line 86: limit_clause when both limit and offset are None."""
+        stmt = select(users)
+        sql = _compile(stmt)
+        assert "LIMIT" not in sql
+
+    def test_update_from_clause_returns_none(self):
+        """compiler.py line 110: update_from_clause always returns None."""
+        from sqlalchemy import update
+
+        # Multi-table update — triggers update_from_clause
+        orders = Table(
+            "orders", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("user_id", Integer),
+            extend_existing=True,
+        )
+        stmt = update(users).values(name="test").where(users.c.id == orders.c.user_id)
+        sql = _compile(stmt)
+        assert "UPDATE" in sql
+
+    def test_on_duplicate_key_update_table_none(self):
+        """compiler.py line 124: visit_on_duplicate_key_update when table is None."""
+        from unittest.mock import patch, MagicMock, PropertyMock
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test")
+        stmt = stmt.on_duplicate_key_update(name="updated")
+        dialect = CubridDialect()
+        compiler_obj = stmt.compile(dialect=dialect, compile_kwargs={"literal_binds": True})
+        on_dup = stmt._post_values_clause
+        # Patch current_executable to return an object without .table
+        with patch.object(type(compiler_obj), 'current_executable', new_callable=PropertyMock) as mock_prop:
+            mock_exec = MagicMock(spec=[])
+            mock_prop.return_value = mock_exec
+            result = compiler_obj.visit_on_duplicate_key_update(on_dup)
+        assert result == "ON DUPLICATE KEY UPDATE"
+
+    def test_on_duplicate_key_update_isnull_bind_param(self):
+        """compiler.py line 158: BindParameter with _isnull type in replace function."""
+        from sqlalchemy_cubrid.dml import insert
+        from sqlalchemy.sql.elements import BindParameter
+        from sqlalchemy.sql import sqltypes
+
+        stmt = insert(users).values(id=1, name="test", email="test@example.com")
+        # Create a bind param with null type
+        null_bind = BindParameter(None, "new_value", type_=sqltypes.NULLTYPE)
+        stmt = stmt.on_duplicate_key_update(name=null_bind)
+        sql = _compile(stmt)
+        assert "ON DUPLICATE KEY UPDATE" in sql
+
+    def test_on_duplicate_key_update_else_returns_none(self):
+        """compiler.py line 167: replace function else branch returning None."""
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test", email="test@example.com")
+        # Use a column expression that is NOT a BindParameter and NOT from inserted_alias
+        stmt = stmt.on_duplicate_key_update(name=users.c.name + " suffix")
+        sql = _compile(stmt)
+        assert "ON DUPLICATE KEY UPDATE" in sql
+
+    def test_on_duplicate_key_update_non_matching_column_warning(self):
+        """compiler.py lines 177-180: non-matching column warning."""
+        import warnings
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test", email="test@example.com")
+        stmt = stmt.on_duplicate_key_update(nonexistent_column="value")
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            sql = _compile(stmt)
+            # Should warn about non-matching column
+            assert len(w) >= 1
+            assert "nonexistent_column" in str(w[0].message) or "not matching" in str(w[0].message).lower()
+
+    def test_merge_missing_target_raises(self):
+        """compiler.py line 202: MERGE with _target = None."""
+        from sqlalchemy_cubrid.dml import Merge
+
+        stmt = Merge.__new__(Merge)
+        stmt._target = None
+        stmt._using_source = users
+        stmt._on_condition = users.c.id == users.c.id
+        stmt._when_matched = {"values": {"name": "test"}}
+        stmt._when_not_matched = None
+        with pytest.raises(Exception, match="requires a target table"):
+            _compile(stmt)
+
+    def test_merge_resolve_target_column_string_not_in_target(self):
+        """compiler.py line 218: _resolve_target_column with string key not in target_columns."""
+        from sqlalchemy_cubrid.dml import merge
+
+        source = Table(
+            "src", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(100)),
+            extend_existing=True,
+        )
+        stmt = merge(users).using(source).on(users.c.id == source.c.id)
+        # Use a string key that's NOT in users.c
+        stmt = stmt.when_matched_then_update({"nonexistent_col": "value"})
+        sql = _compile(stmt)
+        assert "WHEN MATCHED THEN UPDATE SET" in sql
+        assert "nonexistent_col" in sql
+
+    def test_merge_resolve_target_column_with_name_attr(self):
+        """compiler.py line 221: _resolve_target_column with object that has name attr."""
+        from sqlalchemy_cubrid.dml import merge
+
+        source = Table(
+            "src2", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(100)),
+            extend_existing=True,
+        )
+        stmt = merge(users).using(source).on(users.c.id == source.c.id)
+        # Use an actual Column object as key — it has .name attr but isn't a plain string
+        stmt = stmt.when_matched_then_update({users.c.name: source.c.name})
+        sql = _compile(stmt)
+        assert "WHEN MATCHED THEN UPDATE SET" in sql
+
+    def test_merge_render_column_name_fallback(self):
+        """compiler.py line 228: _render_column_name when column_key has no name attr."""
+        from sqlalchemy_cubrid.dml import merge
+
+        source = Table(
+            "src3", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(100)),
+            extend_existing=True,
+        )
+        stmt = merge(users).using(source).on(users.c.id == source.c.id)
+        stmt = stmt.when_matched_then_update({users.c.name: source.c.name})
+        # Inject a processable element with no .name attr: sa.text()
+        text_element = sa.text("custom_col")
+        stmt._when_matched["values"][text_element] = source.c.name
+        sql = _compile(stmt)
+        assert "WHEN MATCHED THEN UPDATE SET" in sql
+
+    def test_merge_empty_matched_values_raises(self):
+        """compiler.py line 248: MERGE WHEN MATCHED with empty values."""
+        from sqlalchemy_cubrid.dml import merge
+
+        source = Table(
+            "src4", metadata,
+            Column("id", Integer, primary_key=True),
+            extend_existing=True,
+        )
+        stmt = merge(users).using(source).on(users.c.id == source.c.id)
+        stmt._when_matched = {"values": {}}  # empty values
+        stmt._when_not_matched = None
+        with pytest.raises(Exception, match="requires at least one UPDATE value"):
+            _compile(stmt)
+
+    def test_merge_empty_not_matched_columns_raises(self):
+        """compiler.py line 276: MERGE WHEN NOT MATCHED with empty columns."""
+        from sqlalchemy_cubrid.dml import merge
+
+        source = Table(
+            "src5", metadata,
+            Column("id", Integer, primary_key=True),
+            extend_existing=True,
+        )
+        stmt = merge(users).using(source).on(users.c.id == source.c.id)
+        stmt._when_matched = None
+        stmt._when_not_matched = {"columns": [], "values": []}
+        with pytest.raises(Exception, match="requires INSERT columns and values"):
+            _compile(stmt)
+
+    def test_merge_mismatched_not_matched_columns_values_raises(self):
+        """compiler.py line 280: MERGE WHEN NOT MATCHED with mismatched columns/values."""
+        from sqlalchemy_cubrid.dml import merge
+
+        source = Table(
+            "src6", metadata,
+            Column("id", Integer, primary_key=True),
+            extend_existing=True,
+        )
+        stmt = merge(users).using(source).on(users.c.id == source.c.id)
+        stmt._when_matched = None
+        stmt._when_not_matched = {
+            "columns": ["id", "name"],
+            "values": [source.c.id],  # mismatched count
+        }
+        with pytest.raises(Exception, match="columns and values must match"):
+            _compile(stmt)
+
+
+class TestDmlCoverage:
+    """Tests for uncovered dml.py branches."""
+
+    def test_on_duplicate_clause_with_column_collection(self):
+        """dml.py line 116: OnDuplicateClause.__init__ with ColumnCollection."""
+        from sqlalchemy_cubrid.dml import insert
+
+        m = MetaData()
+        t = Table("cc_test", m,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+        stmt = insert(t).values(id=1, name="test")
+        # table.c is a ReadOnlyColumnCollection, which is a ColumnCollection
+        stmt = stmt.on_duplicate_key_update(t.c)
+        sql = _compile(stmt)
+        assert "ON DUPLICATE KEY UPDATE" in sql
+
+    def test_merge_into_method(self):
+        """dml.py lines 149-150: Merge.into() method."""
+        from sqlalchemy_cubrid.dml import merge
+
+        m = MetaData()
+        t1 = Table("into_t1", m, Column("id", Integer, primary_key=True))
+        t2 = Table("into_t2", m, Column("id", Integer, primary_key=True))
+        source = Table("into_src", m, Column("id", Integer, primary_key=True), Column("name", String(50)))
+        stmt = merge(t1).into(t2).using(source).on(t2.c.id == source.c.id)
+        stmt = stmt.when_matched_then_update({"id": source.c.id})
+        sql = _compile(stmt)
+        # Target should be t2, not t1
+        assert "into_t2" in sql
+        assert "MERGE INTO" in sql
+
+    def test_when_not_matched_with_column_collection(self):
+        """dml.py lines 221-226: when_not_matched_then_insert with ColumnCollection."""
+        from sqlalchemy_cubrid.dml import merge
+
+        m = MetaData()
+        target = Table("cc_target", m,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+        source = Table("cc_source", m,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+        stmt = merge(target).using(source).on(target.c.id == source.c.id)
+        # Pass ColumnCollection (table.c) as values_dict_or_column_list
+        stmt = stmt.when_not_matched_then_insert(source.c)
+        sql = _compile(stmt)
+        assert "WHEN NOT MATCHED THEN INSERT" in sql
+
+    def test_when_not_matched_empty_column_list_raises(self):
+        """dml.py line 241: Empty column list error."""
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users)
+        with pytest.raises(ValueError, match="non-empty"):
+            stmt.when_not_matched_then_insert([])
+
+    def test_normalize_key_value_pairs_with_tuple_input(self):
+        """dml.py lines 268-271: _normalize_key_value_pairs with tuple input."""
+        from sqlalchemy_cubrid.dml import merge
+
+        source = Table(
+            "tuple_src", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(100)),
+            Column("email", String(200)),
+            extend_existing=True,
+        )
+        stmt = merge(users).using(source).on(users.c.id == source.c.id)
+        # Pass a tuple of tuples (not a list of tuples)
+        stmt = stmt.when_matched_then_update(
+            (("name", source.c.name), ("email", source.c.email))
+        )
+        sql = _compile(stmt)
+        assert "WHEN MATCHED THEN UPDATE SET" in sql
+
+    def test_normalize_key_value_pairs_empty_raises(self):
+        """dml.py line 276: Empty pairs error."""
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users)
+        with pytest.raises(ValueError, match="non-empty"):
+            stmt.when_matched_then_update({})
+
+
+class TestDialectReflectionExceptionPaths:
+    """Tests for dialect.py exception fallback paths."""
+
+    def test_get_columns_comment_query_exception(self):
+        """dialect.py lines 270-271: Exception in comment query falls back to empty dict."""
+        from unittest.mock import MagicMock, call
+        from sqlalchemy import text
+
+        dialect = CubridDialect()
+        conn = MagicMock()
+
+        # First call: SHOW COLUMNS succeeds with one row
+        columns_result = MagicMock()
+        columns_result.__iter__ = MagicMock(return_value=iter([
+            ("id", "INTEGER", "NO", "PRI", None, "AUTO_INCREMENT"),
+        ]))
+
+        call_count = [0]
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return columns_result
+            else:
+                raise Exception("comment query failed")
+
+        conn.execute = MagicMock(side_effect=side_effect)
+
+        result = dialect.get_columns(conn, "test_table", None)
+        assert len(result) == 1
+        assert result[0]["name"] == "id"
+        assert result[0]["comment"] is None
+
+    def test_get_pk_constraint_exception(self):
+        """dialect.py lines 303-304: Exception in constraint query is caught."""
+        from unittest.mock import MagicMock
+
+        dialect = CubridDialect()
+        conn = MagicMock()
+
+        # First call: SHOW COLUMNS returns PRI column
+        columns_result = MagicMock()
+        columns_result.__iter__ = MagicMock(return_value=iter([
+            ("id", "INTEGER", "NO", "PRI", None, "AUTO_INCREMENT"),
+        ]))
+
+        call_count = [0]
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return columns_result
+            else:
+                raise Exception("constraint query failed")
+
+        conn.execute = MagicMock(side_effect=side_effect)
+
+        result = dialect.get_pk_constraint(conn, "test_table", None)
+        assert result["constrained_columns"] == ["id"]
+        # constraint_name should be None because the second query failed
+        assert result["name"] is None
