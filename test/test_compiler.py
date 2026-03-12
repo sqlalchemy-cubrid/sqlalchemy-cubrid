@@ -70,12 +70,26 @@ class TestSelectCompilation:
         sql = _compile(stmt)
         assert "LIMIT" not in sql
 
-    def test_for_update_empty(self):
-        """CUBRID does not support FOR UPDATE; clause should be empty."""
+    def test_for_update_basic(self):
+        """CUBRID supports FOR UPDATE; clause should be present."""
         stmt = select(users).with_for_update()
         sql = _compile(stmt)
-        assert "FOR UPDATE" not in sql
+        assert sql.strip().endswith("FOR UPDATE")
 
+    def test_for_update_of_columns(self):
+        """FOR UPDATE OF col1, col2 should render correctly."""
+        stmt = select(users).with_for_update(of=[users.c.id, users.c.name])
+        sql = _compile(stmt)
+        assert "FOR UPDATE OF" in sql
+        assert "users.id" in sql
+        assert "users.name" in sql
+
+    def test_for_update_nowait_ignored(self):
+        """CUBRID does not support NOWAIT; it should still render FOR UPDATE."""
+        stmt = select(users).with_for_update(nowait=True)
+        sql = _compile(stmt)
+        # FOR UPDATE should be present, NOWAIT is silently ignored by SA base compiler
+        assert "FOR UPDATE" in sql
 
 class TestJoinCompilation:
     orders = Table(

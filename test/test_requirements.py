@@ -124,8 +124,10 @@ class TestRequirements:
             "unusual_column_name_characters",
             "implicitly_named_constraints",
             "update_nowait",
-            "for_update",
         ],
     )
     def test_unsupported_features_are_closed(self, requirements, property_name):
         assert not _is_open(getattr(requirements, property_name))
+
+    def test_for_update_is_open(self, requirements):
+        assert _is_open(requirements.for_update)

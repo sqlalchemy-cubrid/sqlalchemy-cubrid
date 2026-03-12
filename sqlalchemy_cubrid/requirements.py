@@ -264,5 +264,5 @@ class Requirements(SuiteRequirements):
 
     @property
     def for_update(self):
-        """CUBRID does not support SELECT ... FOR UPDATE."""
-        return exclusions.closed()
+        """CUBRID supports SELECT ... FOR UPDATE [OF col1, col2]."""
+        return exclusions.open()

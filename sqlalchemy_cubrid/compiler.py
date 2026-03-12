@@ -51,8 +51,23 @@ class CubridCompiler(compiler.SQLCompiler):
         )
 
     def for_update_clause(self, select, **kw):
-        # CUBRID does not support FOR UPDATE
-        return ""
+        """Render FOR UPDATE clause.
+
+        CUBRID supports::
+
+            SELECT ... FOR UPDATE
+            SELECT ... FOR UPDATE OF col1, col2
+
+        CUBRID does NOT support NOWAIT or SKIP LOCKED.
+        """
+        if select._for_update_arg is None:
+            return ""
+        text = " FOR UPDATE"
+        if select._for_update_arg.of:
+            text += " OF " + ", ".join(
+                self.process(col, **kw) for col in select._for_update_arg.of
+            )
+        return text
 
     def limit_clause(self, select, **kw):
         # https://www.cubrid.org/manual/en/11.0/sql/query/select.html#limit-clause
