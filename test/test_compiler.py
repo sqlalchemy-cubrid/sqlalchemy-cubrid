@@ -132,10 +132,12 @@ class TestWindowFunctionCompilation:
         """RANK() OVER (PARTITION BY ... ORDER BY ...) should compile."""
         stmt = select(
             users.c.name,
-            sa.func.rank().over(
+            sa.func.rank()
+            .over(
                 partition_by=users.c.email,
                 order_by=users.c.id,
-            ).label("rnk"),
+            )
+            .label("rnk"),
         )
         sql = _compile(stmt)
         assert "rank()" in sql.lower()
@@ -708,7 +710,6 @@ class TestCommentCompilation:
         assert "new name" in sql
 
 
-
 class TestIfExistsDDL:
     """Test IF NOT EXISTS / IF EXISTS DDL compilation."""
 
@@ -717,7 +718,8 @@ class TestIfExistsDDL:
         from sqlalchemy.schema import CreateTable
 
         t = sa.Table(
-            "t", sa.MetaData(),
+            "t",
+            sa.MetaData(),
             sa.Column("id", sa.Integer, primary_key=True),
         )
         compiled = CreateTable(t, if_not_exists=True).compile(dialect=CubridDialect())
@@ -729,12 +731,15 @@ class TestIfExistsDDL:
         from sqlalchemy.schema import DropTable
 
         t = sa.Table(
-            "t", sa.MetaData(),
+            "t",
+            sa.MetaData(),
             sa.Column("id", sa.Integer, primary_key=True),
         )
         compiled = DropTable(t, if_exists=True).compile(dialect=CubridDialect())
         sql = str(compiled)
         assert "IF EXISTS" in sql
+
+
 class TestUpdateCompilation:
     """Test UPDATE statement compilation with LIMIT and FROM."""
 
@@ -1123,6 +1128,7 @@ class TestCoverageEdgeCases:
         compiler_obj = stmt.compile(dialect=dialect, compile_kwargs={"literal_binds": True})
         # Create a mock cast element where typeclause processes to None
         from unittest.mock import MagicMock
+
         mock_cast = MagicMock()
         mock_clause = MagicMock()
         mock_self_group = MagicMock()
@@ -1131,12 +1137,14 @@ class TestCoverageEdgeCases:
         mock_clause.self_group.return_value = mock_self_group
         # Make process return None for typeclause, "col" for clause
         original_process = compiler_obj.process
+
         def patched_process(element, **kw):
             if element is mock_cast.typeclause:
                 return None
             if element is mock_self_group:
                 return "users.name"
             return original_process(element, **kw)
+
         compiler_obj.process = patched_process
         result = compiler_obj.visit_cast(mock_cast)
         assert result == "users.name"
@@ -1160,7 +1168,8 @@ class TestCoverageEdgeCases:
 
         # Multi-table update — triggers update_from_clause
         orders = Table(
-            "orders", metadata,
+            "orders",
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("user_id", Integer),
             extend_existing=True,
@@ -1180,7 +1189,9 @@ class TestCoverageEdgeCases:
         compiler_obj = stmt.compile(dialect=dialect, compile_kwargs={"literal_binds": True})
         on_dup = stmt._post_values_clause
         # Patch current_executable to return an object without .table
-        with patch.object(type(compiler_obj), 'current_executable', new_callable=PropertyMock) as mock_prop:
+        with patch.object(
+            type(compiler_obj), "current_executable", new_callable=PropertyMock
+        ) as mock_prop:
             mock_exec = MagicMock(spec=[])
             mock_prop.return_value = mock_exec
             result = compiler_obj.visit_on_duplicate_key_update(on_dup)
@@ -1218,10 +1229,13 @@ class TestCoverageEdgeCases:
         stmt = stmt.on_duplicate_key_update(nonexistent_column="value")
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            sql = _compile(stmt)
+            _compile(stmt)
             # Should warn about non-matching column
             assert len(w) >= 1
-            assert "nonexistent_column" in str(w[0].message) or "not matching" in str(w[0].message).lower()
+            assert (
+                "nonexistent_column" in str(w[0].message)
+                or "not matching" in str(w[0].message).lower()
+            )
 
     def test_merge_missing_target_raises(self):
         """compiler.py line 202: MERGE with _target = None."""
@@ -1241,7 +1255,8 @@ class TestCoverageEdgeCases:
         from sqlalchemy_cubrid.dml import merge
 
         source = Table(
-            "src", metadata,
+            "src",
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(100)),
             extend_existing=True,
@@ -1258,7 +1273,8 @@ class TestCoverageEdgeCases:
         from sqlalchemy_cubrid.dml import merge
 
         source = Table(
-            "src2", metadata,
+            "src2",
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(100)),
             extend_existing=True,
@@ -1274,7 +1290,8 @@ class TestCoverageEdgeCases:
         from sqlalchemy_cubrid.dml import merge
 
         source = Table(
-            "src3", metadata,
+            "src3",
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(100)),
             extend_existing=True,
@@ -1292,7 +1309,8 @@ class TestCoverageEdgeCases:
         from sqlalchemy_cubrid.dml import merge
 
         source = Table(
-            "src4", metadata,
+            "src4",
+            metadata,
             Column("id", Integer, primary_key=True),
             extend_existing=True,
         )
@@ -1307,7 +1325,8 @@ class TestCoverageEdgeCases:
         from sqlalchemy_cubrid.dml import merge
 
         source = Table(
-            "src5", metadata,
+            "src5",
+            metadata,
             Column("id", Integer, primary_key=True),
             extend_existing=True,
         )
@@ -1322,7 +1341,8 @@ class TestCoverageEdgeCases:
         from sqlalchemy_cubrid.dml import merge
 
         source = Table(
-            "src6", metadata,
+            "src6",
+            metadata,
             Column("id", Integer, primary_key=True),
             extend_existing=True,
         )
@@ -1344,7 +1364,9 @@ class TestDmlCoverage:
         from sqlalchemy_cubrid.dml import insert
 
         m = MetaData()
-        t = Table("cc_test", m,
+        t = Table(
+            "cc_test",
+            m,
             Column("id", Integer, primary_key=True),
             Column("name", String(50)),
         )
@@ -1361,7 +1383,9 @@ class TestDmlCoverage:
         m = MetaData()
         t1 = Table("into_t1", m, Column("id", Integer, primary_key=True))
         t2 = Table("into_t2", m, Column("id", Integer, primary_key=True))
-        source = Table("into_src", m, Column("id", Integer, primary_key=True), Column("name", String(50)))
+        source = Table(
+            "into_src", m, Column("id", Integer, primary_key=True), Column("name", String(50))
+        )
         stmt = merge(t1).into(t2).using(source).on(t2.c.id == source.c.id)
         stmt = stmt.when_matched_then_update({"id": source.c.id})
         sql = _compile(stmt)
@@ -1374,11 +1398,15 @@ class TestDmlCoverage:
         from sqlalchemy_cubrid.dml import merge
 
         m = MetaData()
-        target = Table("cc_target", m,
+        target = Table(
+            "cc_target",
+            m,
             Column("id", Integer, primary_key=True),
             Column("name", String(50)),
         )
-        source = Table("cc_source", m,
+        source = Table(
+            "cc_source",
+            m,
             Column("id", Integer, primary_key=True),
             Column("name", String(50)),
         )
@@ -1401,7 +1429,8 @@ class TestDmlCoverage:
         from sqlalchemy_cubrid.dml import merge
 
         source = Table(
-            "tuple_src", metadata,
+            "tuple_src",
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(100)),
             Column("email", String(200)),
@@ -1409,9 +1438,7 @@ class TestDmlCoverage:
         )
         stmt = merge(users).using(source).on(users.c.id == source.c.id)
         # Pass a tuple of tuples (not a list of tuples)
-        stmt = stmt.when_matched_then_update(
-            (("name", source.c.name), ("email", source.c.email))
-        )
+        stmt = stmt.when_matched_then_update((("name", source.c.name), ("email", source.c.email)))
         sql = _compile(stmt)
         assert "WHEN MATCHED THEN UPDATE SET" in sql
 
@@ -1429,19 +1456,23 @@ class TestDialectReflectionExceptionPaths:
 
     def test_get_columns_comment_query_exception(self):
         """dialect.py lines 270-271: Exception in comment query falls back to empty dict."""
-        from unittest.mock import MagicMock, call
-        from sqlalchemy import text
+        from unittest.mock import MagicMock
 
         dialect = CubridDialect()
         conn = MagicMock()
 
         # First call: SHOW COLUMNS succeeds with one row
         columns_result = MagicMock()
-        columns_result.__iter__ = MagicMock(return_value=iter([
-            ("id", "INTEGER", "NO", "PRI", None, "AUTO_INCREMENT"),
-        ]))
+        columns_result.__iter__ = MagicMock(
+            return_value=iter(
+                [
+                    ("id", "INTEGER", "NO", "PRI", None, "AUTO_INCREMENT"),
+                ]
+            )
+        )
 
         call_count = [0]
+
         def side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
@@ -1465,11 +1496,16 @@ class TestDialectReflectionExceptionPaths:
 
         # First call: SHOW COLUMNS returns PRI column
         columns_result = MagicMock()
-        columns_result.__iter__ = MagicMock(return_value=iter([
-            ("id", "INTEGER", "NO", "PRI", None, "AUTO_INCREMENT"),
-        ]))
+        columns_result.__iter__ = MagicMock(
+            return_value=iter(
+                [
+                    ("id", "INTEGER", "NO", "PRI", None, "AUTO_INCREMENT"),
+                ]
+            )
+        )
 
         call_count = [0]
+
         def side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:

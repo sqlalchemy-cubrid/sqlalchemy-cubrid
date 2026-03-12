@@ -72,9 +72,7 @@ class CubridCompiler(compiler.SQLCompiler):
             return ""
         text = " FOR UPDATE"
         if select._for_update_arg.of:
-            text += " OF " + ", ".join(
-                self.process(col, **kw) for col in select._for_update_arg.of
-            )
+            text += " OF " + ", ".join(self.process(col, **kw) for col in select._for_update_arg.of)
         return text
 
     def limit_clause(self, select, **kw):
@@ -129,11 +127,9 @@ class CubridCompiler(compiler.SQLCompiler):
                 for key in on_duplicate._parameter_ordering
             ]
             ordered_keys = set(parameter_ordering)
-            cols = [
-                table.c[key]
-                for key in parameter_ordering
-                if key in table.c
-            ] + [c for c in table.c if c.key not in ordered_keys]
+            cols = [table.c[key] for key in parameter_ordering if key in table.c] + [
+                c for c in table.c if c.key not in ordered_keys
+            ]
         else:
             cols = list(table.c)
 
@@ -151,18 +147,13 @@ class CubridCompiler(compiler.SQLCompiler):
             else:
 
                 def replace(element, captured_column=column, **kw):
-                    if (
-                        isinstance(element, elements.BindParameter)
-                        and element.type._isnull
-                    ):
+                    if isinstance(element, elements.BindParameter) and element.type._isnull:
                         return element._with_binary_element_type(captured_column.type)
                     elif (
                         isinstance(element, elements.ColumnClause)
                         and element.table is on_duplicate.inserted_alias
                     ):
-                        return literal_column(
-                            f"VALUES({self.preparer.quote(element.name)})"
-                        )
+                        return literal_column(f"VALUES({self.preparer.quote(element.name)})")
                     else:
                         return None
 
@@ -253,8 +244,7 @@ class CubridCompiler(compiler.SQLCompiler):
             for column_key, value in matched_values.items():
                 target_column = _resolve_target_column(column_key)
                 set_clauses.append(
-                    f"{_render_column_name(column_key)} = "
-                    f"{_render_value(value, target_column)}"
+                    f"{_render_column_name(column_key)} = {_render_value(value, target_column)}"
                 )
 
             matched_clause = f"WHEN MATCHED THEN UPDATE SET {', '.join(set_clauses)}"
@@ -363,9 +353,7 @@ class CubridDDLCompiler(compiler.DDLCompiler):
         )
 
     def visit_drop_table_comment(self, drop, **kw):
-        return "ALTER TABLE %s COMMENT = ''" % (
-            self.preparer.format_table(drop.element),
-        )
+        return "ALTER TABLE %s COMMENT = ''" % (self.preparer.format_table(drop.element),)
 
     def visit_set_column_comment(self, create, **kw):
         return "ALTER TABLE %s MODIFY %s %s COMMENT %s" % (

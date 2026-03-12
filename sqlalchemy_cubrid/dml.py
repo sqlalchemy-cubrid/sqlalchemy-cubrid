@@ -82,14 +82,11 @@ class Insert(StandardInsert):
         values = kw
 
         if arg_values and kw:
-            raise exc.ArgumentError(
-                "Can't pass kwargs and positional arguments simultaneously"
-            )
+            raise exc.ArgumentError("Can't pass kwargs and positional arguments simultaneously")
         if arg_values:
             if len(arg_values) > 1:
                 raise exc.ArgumentError(
-                    "Only a single dictionary or list of tuples "
-                    "is accepted positionally."
+                    "Only a single dictionary or list of tuples is accepted positionally."
                 )
             values = next(iter(arg_values), kw)
 
@@ -168,25 +165,19 @@ class Merge(ClauseElement, Generative):
     ) -> Self:
         values = self._normalize_key_value_pairs(values_dict, argument_name="values_dict")
         existing_delete_where = (
-            self._when_matched.get("delete_where")
-            if self._when_matched is not None
-            else None
+            self._when_matched.get("delete_where") if self._when_matched is not None else None
         )
         self._when_matched = {
             "values": dict(values),
             "where": where,
-            "delete_where": (
-                delete_where if delete_where is not None else existing_delete_where
-            ),
+            "delete_where": (delete_where if delete_where is not None else existing_delete_where),
         }
         return self
 
     @_generative
     def when_matched_then_delete(self, where: Optional[ClauseElement] = None) -> Self:
         if self._when_matched is None:
-            raise ValueError(
-                "WHEN MATCHED UPDATE clause must be specified before DELETE WHERE"
-            )
+            raise ValueError("WHEN MATCHED UPDATE clause must be specified before DELETE WHERE")
 
         self._when_matched = {
             "values": dict(self._when_matched["values"]),
@@ -225,10 +216,7 @@ class Merge(ClauseElement, Generative):
             columns = [column for column, _ in pairs]
             values = [value for _, value in pairs]
         elif isinstance(values_dict_or_column_list, (list, tuple)):
-            if (
-                values_dict_or_column_list
-                and isinstance(values_dict_or_column_list[0], tuple)
-            ):
+            if values_dict_or_column_list and isinstance(values_dict_or_column_list[0], tuple):
                 pairs = self._normalize_key_value_pairs(
                     list(values_dict_or_column_list),
                     argument_name="values_dict_or_column_list",
@@ -268,18 +256,12 @@ class Merge(ClauseElement, Generative):
         elif isinstance(values, tuple):
             pairs = list(values)
         else:
-            raise ValueError(
-                f"{argument_name} must be a non-empty dictionary or a list of tuples"
-            )
+            raise ValueError(f"{argument_name} must be a non-empty dictionary or a list of tuples")
 
         if not pairs:
-            raise ValueError(
-                f"{argument_name} must be a non-empty dictionary or a list of tuples"
-            )
+            raise ValueError(f"{argument_name} must be a non-empty dictionary or a list of tuples")
 
         if not all(isinstance(pair, tuple) and len(pair) == 2 for pair in pairs):
-            raise ValueError(
-                f"{argument_name} must be a non-empty dictionary or a list of tuples"
-            )
+            raise ValueError(f"{argument_name} must be a non-empty dictionary or a list of tuples")
 
         return pairs
