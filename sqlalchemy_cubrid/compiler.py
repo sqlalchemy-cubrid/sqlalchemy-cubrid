@@ -1,31 +1,19 @@
 # sqlalchemy_cubrid/compiler.py
-# Copyright (C) 2021-2022 by sqlalchemy-cubrid authors and contributors
+# Copyright (C) 2021-2026 by sqlalchemy-cubrid authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-cubrid and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy.sql import compiler
+"""CUBRID SQL, DDL, and type compilers for SQLAlchemy 2.0."""
 
-# ToDo: Need to implement the function through the method below
-# from sqlalchemy import exc
-# from sqlalchemy import schema as sa_schema
-# from sqlalchemy.types import Unicode
-# from sqlalchemy.ext.compiler import compiles
-# from sqlalchemy.sql.expression import Select
-# from sqlalchemy import exc, sql
-# from sqlalchemy import create_engine
+from __future__ import annotations
+
+from sqlalchemy.sql import compiler
 
 
 class CubridCompiler(compiler.SQLCompiler):
-    """CubridCompiler implementation of"""
-
-    def __init__(
-        self, dialect, statement, column_keys=None, inline=False, **kwargs
-    ):
-        super(CubridCompiler, self).__init__(
-            dialect, statement, column_keys, inline, **kwargs
-        )
+    """SQLCompiler subclass for CUBRID."""
 
     def visit_sysdate_func(self, fn, **kw):
         return "SYSDATE"
@@ -34,27 +22,24 @@ class CubridCompiler(compiler.SQLCompiler):
         return "UTC_TIME()"
 
     def visit_cast(self, cast, **kw):
-        # see: https://www.cubrid.org/manual/en/9.3.0/sql/function/typecast_fn.html#cast
+        # https://www.cubrid.org/manual/en/11.0/sql/function/typecast_fn.html#cast
         type_ = self.process(cast.typeclause)
         if type_ is None:
             return self.process(cast.clause.self_group())
-
-        return f"CAST({self.process(cast.clause)}AS {type_})"
+        return f"CAST({self.process(cast.clause)} AS {type_})"
 
     def render_literal_value(self, value, type_):
-        value = super(CubridCompiler, self).render_literal_value(value, type_)
+        value = super().render_literal_value(value, type_)
         value = value.replace("\\", "\\\\")
         return value
 
     def get_select_precolumns(self, select, **kw):
-        # TODO
-        if select._distinct:
+        if bool(select._distinct):
             return "DISTINCT "
-        else:
-            return ""
+        return ""
 
     def visit_join(self, join, asfrom=False, **kwargs):
-        # see: https://www.cubrid.org/manual/en/9.3.0/sql/query/select.html#join-query
+        # https://www.cubrid.org/manual/en/11.0/sql/query/select.html#join-query
         return "".join(
             (
                 self.process(join.left, asfrom=True, **kwargs),
@@ -66,55 +51,85 @@ class CubridCompiler(compiler.SQLCompiler):
         )
 
     def for_update_clause(self, select, **kw):
+        # CUBRID does not support FOR UPDATE
         return ""
 
-    def limit_clause(self, select):
-        # see: https://www.cubrid.org/manual/en/9.3.0/sql/query/select.html#limit-clause
-        limit, offset = select._limit, select._offset
-        if (limit, offset) == (None, None):
+    def limit_clause(self, select, **kw):
+        # https://www.cubrid.org/manual/en/11.0/sql/query/select.html#limit-clause
+        # SA 2.0: _limit_clause / _offset_clause are ClauseElements, not raw ints.
+        limit_clause = select._limit_clause
+        offset_clause = select._offset_clause
+        if limit_clause is None and offset_clause is None:
             return ""
-        elif limit is None and offset is not None:
-            return " \n LIMIT %s, 1073741823" % (
-                self.process(sql.literal(offset))
-            )
-        elif offset is not None:
+        elif limit_clause is None and offset_clause is not None:
+            return " \n LIMIT %s, 1073741823" % (self.process(offset_clause, **kw),)
+        elif offset_clause is not None:
             return " \n LIMIT %s, %s" % (
-                self.process(sql.literal(offset)),
-                self.process(sql.literal(limit)),
+                self.process(offset_clause, **kw),
+                self.process(limit_clause, **kw),
             )
         else:
-            return " \n LIMIT %s" % (self.process(sql.literal(limit)),)
+            return " \n LIMIT %s" % (self.process(limit_clause, **kw),)
 
     def update_limit_clause(self, update_stmt):
-        # see: https://www.cubrid.org/manual/en/9.3.0/sql/query/update.html
+        # https://www.cubrid.org/manual/en/11.0/sql/query/update.html
         limit = update_stmt.kwargs.get(f"{self.dialect.name}_limit", None)
         if limit:
             return f"LIMIT {limit}"
-        else:
-            return None
+        return None
 
     def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
-
         return ", ".join(
-            t._compiler_dispatch(self, asfrom=True, **kw)
-            for t in [from_table] + list(extra_froms)
+            t._compiler_dispatch(self, asfrom=True, **kw) for t in [from_table] + list(extra_froms)
         )
 
-    def update_from_clause(
-        self, update_stmt, from_table, extra_froms, from_hints, **kw
-    ):
+    def update_from_clause(self, update_stmt, from_table, extra_froms, from_hints, **kw):
         return None
 
 
 class CubridDDLCompiler(compiler.DDLCompiler):
-    pass
+    """DDLCompiler subclass for CUBRID.
+
+    Handles AUTO_INCREMENT for autoincrement columns and column defaults.
+    """
+
+    def get_column_specification(self, column, **kw):
+        """Build column DDL specification.
+
+        CUBRID syntax::
+
+            column_name TYPE [NOT NULL] [AUTO_INCREMENT] [DEFAULT value]
+        """
+        colspec = [
+            self.preparer.format_column(column),
+            self.dialect.type_compiler_instance.process(column.type, type_expression=column),
+        ]
+
+        if not column.nullable:
+            colspec.append("NOT NULL")
+
+        if (
+            column.table is not None
+            and column is column.table._autoincrement_column
+            and (column.server_default is None)
+        ):
+            colspec.append("AUTO_INCREMENT")
+        else:
+            default = self.get_column_default_string(column)
+            if default is not None:
+                colspec.append("DEFAULT " + default)
+
+        return " ".join(colspec)
 
 
 class CubridTypeCompiler(compiler.GenericTypeCompiler):
+    """TypeCompiler for CUBRID data types."""
+
     def _get(self, key, type_, kw):
         return kw.get(key, getattr(type_, key, None))
 
     def visit_BOOLEAN(self, type_, **kw):
+        # CUBRID has no native BOOLEAN; map to SMALLINT.
         return self.visit_SMALLINT(type_)
 
     def visit_NUMERIC(self, type_, **kw):
@@ -187,7 +202,7 @@ class CubridTypeCompiler(compiler.GenericTypeCompiler):
         if hasattr(type_, "national") and type_.national:
             return self.visit_NCHAR(type_)
         elif type_.length:
-            return f"CHAR({type_.length}"
+            return f"CHAR({type_.length})"
         else:
             return "CHAR"
 
@@ -222,27 +237,23 @@ class CubridTypeCompiler(compiler.GenericTypeCompiler):
         return "STRING"
 
     def visit_SET(self, type_, **kw):
-        return self.visit_list(type_, "SET")
+        return self._visit_collection(type_, "SET")
 
     def visit_MULTISET(self, type_, **kw):
-        return self.visit_list(type_, "MULTISET")
+        return self._visit_collection(type_, "MULTISET")
 
     def visit_SEQUENCE(self, type_, **kw):
-        return self.visit_list(type_, "SEQUENCE")
+        return self._visit_collection(type_, "SEQUENCE")
 
-    def visit_list(self, type_, list_type, **kw):
-        """CUBRID support Collection Types (SET, MULTISET, LIST or SEQUENCE)
-        see: https://www.cubrid.org/manual/en/9.3.0/sql/datatype.html#collection-types
+    def _visit_collection(self, type_, collection_type, **kw):
+        """Compile CUBRID collection types (SET, MULTISET, LIST/SEQUENCE).
+
+        See: https://www.cubrid.org/manual/en/11.0/sql/datatype.html#collection-types
         """
-        first = True
-        compiled = list_type + "("
+        parts = []
         for value in type_._ddl_values:
-            if not first:
-                compiled += ","
-            if isinstance(value, basestring):
-                compiled += value
+            if isinstance(value, str):
+                parts.append(value)
             else:
-                compiled += value.__visit_name__
-            first = False
-        compiled += ")"
-        return compiled
+                parts.append(value.__visit_name__)
+        return f"{collection_type}({','.join(parts)})"

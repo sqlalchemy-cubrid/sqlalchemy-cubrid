@@ -1,2 +1,1 @@
-SQLAlchemy < 1.4
-CUBRID-Python
+sqlalchemy>=2.0,<2.2

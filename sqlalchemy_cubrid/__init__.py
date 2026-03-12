@@ -1,50 +1,60 @@
 # sqlalchemy_cubrid/__init__.py
-# Copyright (C) 2021-2022 by sqlalchemy-cubrid authors and contributors
+# Copyright (C) 2021-2026 by sqlalchemy-cubrid authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-cubrid and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-# Each dialect provides the full set of typenames supported by that backend with its __all__ collection
-# see: https://docs.sqlalchemy.org/en/13/core/type_basics.html#vendor-specific-types
+"""CUBRID dialect for SQLAlchemy.
+
+Each dialect provides the full set of typenames supported by that backend
+with its ``__all__`` collection.
+
+See: https://docs.sqlalchemy.org/en/20/core/type_basics.html#vendor-specific-types
+"""
+
+from __future__ import annotations
 
 from .types import (
-    SMALLINT,
     BIGINT,
-    NUMERIC,
+    BIT,
+    BLOB,
+    CHAR,
+    CLOB,
     DECIMAL,
-    FLOAT,
     DOUBLE,
     DOUBLE_PRECISION,
-    BIT,
-    CHAR,
-    VARCHAR,
-    NCHAR,
-    NVARCHAR,
-    STRING,
-    BLOB,
-    CLOB,
-    SET,
+    FLOAT,
     MULTISET,
+    NCHAR,
+    NUMERIC,
+    NVARCHAR,
+    REAL,
     SEQUENCE,
+    SET,
+    SMALLINT,
+    STRING,
+    VARCHAR,
 )
+
 from sqlalchemy.sql.sqltypes import (
-    INTEGER,
     DATE,
     DATETIME,
+    INTEGER,
     TIME,
     TIMESTAMP,
 )
 
+__version__ = "1.0.0"
+
 __all__ = (
-    "SHORT",
     "SMALLINT",
     "INTEGER",
     "BIGINT",
     "NUMERIC",
     "DECIMAL",
     "FLOAT",
-    "INTEGER",
+    "REAL",
     "DOUBLE",
     "DOUBLE_PRECISION",
     "DATE",
@@ -60,9 +70,6 @@ __all__ = (
     "BLOB",
     "CLOB",
     "SET",
-    "BLOB",
     "MULTISET",
     "SEQUENCE",
 )
-
-__version__ = "0.0.1"

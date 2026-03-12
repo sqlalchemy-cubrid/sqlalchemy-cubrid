@@ -1,3 +1,62 @@
-[tool.black]
-line-length = 79
-target-version = ['py36']
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sqlalchemy-cubrid"
+version = "1.0.0"
+description = "CUBRID dialect for SQLAlchemy"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Yeongseon Choe", email = "yeongseon.choe@gmail.com"},
+    {name = "Gyeongjun Paik", email = "paikend@gmail.com"},
+]
+keywords = ["SQLAlchemy", "CUBRID", "dialect"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "sqlalchemy>=2.0,<2.2",
+]
+
+[project.optional-dependencies]
+cubrid = [
+    "CUBRID-Python",
+]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/paikend/sqlalchemy-cubrid"
+Repository = "https://github.com/paikend/sqlalchemy-cubrid"
+Documentation = "https://github.com/paikend/sqlalchemy-cubrid"
+
+[project.entry-points."sqlalchemy.dialects"]
+cubrid = "sqlalchemy_cubrid.dialect:CubridDialect"
+"cubrid.cubrid" = "sqlalchemy_cubrid.dialect:CubridDialect"
+
+[tool.setuptools]
+packages = ["sqlalchemy_cubrid"]
+include-package-data = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+addopts = "--tb native -v -r fxX --maxfail=25 -p no:warnings"
+python_files = "test/*test_*.py"

@@ -1,47 +1,59 @@
 # sqlalchemy_cubrid/dialect.py
-# Copyright (C) 2021-2022 by sqlalchemy-cubrid authors and contributors
+# Copyright (C) 2021-2026 by sqlalchemy-cubrid authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-cubrid and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from cmd import IDENTCHARS
+"""CUBRID dialect for SQLAlchemy 2.0."""
+
+from __future__ import annotations
+
 import re
-from sqlalchemy.sql import text
-from sqlalchemy.sql import util
-from sqlalchemy.engine import reflection
-from sqlalchemy.engine import default
-from sqlalchemy_cubrid.base import CubridExecutionContext
-from sqlalchemy_cubrid.base import CubridIdentifierPreparer
-from sqlalchemy_cubrid.compiler import CubridCompiler
-from sqlalchemy_cubrid.compiler import CubridDDLCompiler
-from sqlalchemy_cubrid.compiler import CubridTypeCompiler
 
 from sqlalchemy import types as sqltypes
-from sqlalchemy_cubrid.types import SMALLINT
-from sqlalchemy.types import INTEGER
-from sqlalchemy_cubrid.types import BIGINT
-from sqlalchemy_cubrid.types import NUMERIC
-from sqlalchemy_cubrid.types import DECIMAL
-from sqlalchemy_cubrid.types import FLOAT
-from sqlalchemy_cubrid.types import DOUBLE
-from sqlalchemy_cubrid.types import DOUBLE_PRECISION
-from sqlalchemy.types import DATE
-from sqlalchemy.types import DATETIME
-from sqlalchemy.types import TIME
-from sqlalchemy.types import TIMESTAMP
-from sqlalchemy_cubrid.types import BIT
-from sqlalchemy_cubrid.types import CHAR
-from sqlalchemy_cubrid.types import VARCHAR
-from sqlalchemy_cubrid.types import NCHAR
-from sqlalchemy_cubrid.types import NVARCHAR
-from sqlalchemy_cubrid.types import STRING
-from sqlalchemy_cubrid.types import BLOB
-from sqlalchemy_cubrid.types import CLOB
-from sqlalchemy_cubrid.types import SET
-from sqlalchemy_cubrid.types import MULTISET
-from sqlalchemy_cubrid.types import SEQUENCE
+from sqlalchemy.engine import default, reflection
+from sqlalchemy.sql import text
 
+from sqlalchemy_cubrid.base import CubridExecutionContext, CubridIdentifierPreparer
+from sqlalchemy_cubrid.compiler import (
+    CubridCompiler,
+    CubridDDLCompiler,
+    CubridTypeCompiler,
+)
+from sqlalchemy_cubrid.types import (
+    BIGINT,
+    BIT,
+    BLOB,
+    CHAR,
+    CLOB,
+    DECIMAL,
+    DOUBLE,
+    DOUBLE_PRECISION,
+    FLOAT,
+    MULTISET,
+    NCHAR,
+    NUMERIC,
+    NVARCHAR,
+    SEQUENCE,
+    SET,
+    SMALLINT,
+    STRING,
+    VARCHAR,
+)
+
+from sqlalchemy.types import (
+    DATE,
+    DATETIME,
+    INTEGER,
+    TIME,
+    TIMESTAMP,
+)
+
+
+# -----------------------------------------------------------------------
+# Column-spec and ischema_names mappings
+# -----------------------------------------------------------------------
 
 colspecs = {
     sqltypes.Numeric: NUMERIC,
@@ -49,10 +61,10 @@ colspecs = {
     sqltypes.Time: TIME,
 }
 
-# ischema names is used for reflecting columns (get_columns)
-# see: https://www.cubrid.org/manual/en/9.3.0/sql/datatype.html
+# ischema_names maps CUBRID type names from SHOW COLUMNS to SA types.
+# https://www.cubrid.org/manual/en/11.0/sql/datatype.html
 ischema_names = {
-    # Numeric Types
+    # Numeric
     "SHORT": SMALLINT,
     "SMALLINT": SMALLINT,
     "INTEGER": INTEGER,
@@ -60,62 +72,72 @@ ischema_names = {
     "NUMERIC": NUMERIC,
     "DECIMAL": DECIMAL,
     "FLOAT": FLOAT,
-    # REAL
     "DOUBLE": DOUBLE,
     "DOUBLE PRECISION": DOUBLE_PRECISION,
-    # Date/Time Types
+    # Date/Time
     "DATE": DATE,
     "TIME": TIME,
     "TIMESTAMP": TIMESTAMP,
     "DATETIME": DATETIME,
     # Bit Strings
-    "BIT": BIT,  # BIT(n)
-    "BIT VARYING": BIT,  # BIT VARYING(n)
+    "BIT": BIT,
+    "BIT VARYING": BIT,
     # Character Strings
-    "CHAR": CHAR,  # CHAR(n)
-    "VARCHAR": VARCHAR,  # VARCHAR(n)
+    "CHAR": CHAR,
+    "VARCHAR": VARCHAR,
     "NCHAR": NCHAR,
     "CHAR VARYING": NVARCHAR,
     "STRING": STRING,
-    # BLOB/CLOB Data Types
+    # LOB
     "BLOB": BLOB,
     "CLOB": CLOB,
-    # Collection Types
+    # Collection
     "SET": SET,
     "MULTISET": MULTISET,
-    "SEQUENCE": SEQUENCE,
     "SEQUENCE": SEQUENCE,
 }
 
 
-class CubridDialect(default.DefaultDialect):
-    name = "cubrid"
-    driver = "CUBRID-Python"
+# -----------------------------------------------------------------------
+# Dialect
+# -----------------------------------------------------------------------
 
+
+class CubridDialect(default.DefaultDialect):
+    """SQLAlchemy dialect for CUBRID."""
+
+    name = "cubrid"
+    driver = "cubrid"
+
+    # SA 2.0 statement caching
+    supports_statement_cache = True
+
+    # Compiler classes
     statement_compiler = CubridCompiler
     ddl_compiler = CubridDDLCompiler
     type_compiler = CubridTypeCompiler
     preparer = CubridIdentifierPreparer
     execution_ctx_cls = CubridExecutionContext
 
-    # see: https://www.cubrid.org/manual/en/9.3.0/api/python.html
+    # DBAPI
+    # https://www.cubrid.org/manual/en/11.0/api/python.html
     default_paramstyle = "qmark"
 
+    # Type mappings
     colspecs = colspecs
     ischema_names = ischema_names
 
-    # see: https://www.cubrid.org/manual/en/9.3.0/sql/identifier.html
+    # Identifiers
+    # https://www.cubrid.org/manual/en/11.0/sql/identifier.html
     max_identifier_length = 254
     max_index_name_length = 254
     max_constraint_name_length = 254
 
-    def __init__(self, isolation_level=None, **kwargs):
-        super(CubridDialect, self).__init__(**kwargs)
-        self.isolation_level = isolation_level
+    requires_name_normalize = True
 
-    # Data Type
+    # Data type support
     supports_native_enum = False
-    supports_native_boolean = True
+    supports_native_boolean = False  # CUBRID uses SMALLINT for booleans
     supports_native_decimal = True
 
     # Column options
@@ -123,388 +145,439 @@ class CubridDialect(default.DefaultDialect):
 
     # DDL
     supports_alter = True
+    supports_comments = False
 
     # DML
     supports_default_values = False
-    """dialect supports INSERT... DEFAULT VALUES syntax"""
-
     supports_default_metavalue = False
-    """dialect supports INSERT... VALUES (DEFAULT) syntax"""
-
     supports_empty_insert = False
-    """dialect supports INSERT () VALUES ()"""
-
     supports_multivalues_insert = True
-    postfetch_lastrowid = False
+    supports_is_distinct_from = False
 
-    requires_name_normalize = True
+    # RETURNING
+    insert_returning = False
+    update_returning = False
+    delete_returning = False
+
+    postfetch_lastrowid = True
+
+    def __init__(self, isolation_level=None, **kwargs):
+        super().__init__(**kwargs)
+        self.isolation_level = isolation_level
 
     @classmethod
-    def dbapi(cls):
-        """Hook to the dbapi2.0 implementation's module"""
+    def import_dbapi(cls):
+        """Import and return the CUBRID DBAPI module (SA 2.0 API)."""
         try:
             import CUBRIDdb as cubrid_dbapi
         except ImportError as e:
             raise e
         return cubrid_dbapi
 
+    # Keep legacy dbapi() for SA 1.x compat if needed
+    @classmethod
+    def dbapi(cls):
+        return cls.import_dbapi()
+
     def create_connect_args(self, url):
-        """
-        Build DB-API compatible connection arguments.
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.create_connect_args`.
-        """
+        """Build DB-API connection arguments for CUBRID.
 
-        # Connection to CUBRID database is made through connect() method.
-        # Syntax:
-        # connect (url, user, password])
-        #    url - CUBRID:host:port:db_name:db_user:db_password:::
-        #    user - Authorized username.
-        #    password - Password associated with the username.
+        CUBRID connection string format::
 
+            CUBRID:host:port:db_name:::
+        """
         if url is None:
-            raise ValueError(f"Unexpected database format")
+            raise ValueError("Unexpected database URL format")
 
-        params = super(CubridDialect, self).create_connect_args(url)[1]
-        url = (
-            f'CUBRID:{params["host"]}:{params["port"]}:{params["database"]}:::'
-        )
-        args = (url, params["username"], params["password"])
-        kwargs = {}
-        return args, kwargs
+        opts = url.translate_connect_args(username="user", database="database")
+        host = opts.get("host", "localhost")
+        port = opts.get("port", 33000)
+        database = opts.get("database", "")
+        username = opts.get("user", "")
+        password = opts.get("password", "")
+
+        connect_url = f"CUBRID:{host}:{port}:{database}:::"
+        args = (connect_url, username, password)
+        return args, {}
 
     def initialize(self, connection):
-        default.DefaultDialect.initialize(self, connection)
+        super().initialize(connection)
+
+    # ----- Reflection methods -----
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
-        """
-        Return information about columns in `table_name`.
+        """Return column information for *table_name*.
 
-        :param connection: DBAPI connection
-        :param table_name: table name to query
-        :param schema: schema name to query, if not the default schema.
-        :rtype: list[dict]
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_columns`.
+        Uses ``SHOW COLUMNS IN <table>`` which is available since CUBRID 9.x.
         """
-        # see: https://www.cubrid.org/manual/en/9.3.0/sql/query/show.html#show-columns
         columns = []
-
-        result = connection.execute(text(f"SHOW COLUMNS IN {table_name}"))
+        quoted = self.identifier_preparer.quote_identifier(table_name)
+        result = connection.execute(text(f"SHOW COLUMNS IN {quoted}"))
         for row in result:
             colname = row[0]
-            coltype_ = row[1]
-            nullable = not row[2] == "YES"
-            default = row[4]
-            autoincrement = "auto_increment" in row[5]
+            coltype_raw = row[1]
+            nullable = row[2] == "YES"
+            default_val = row[4]
+            autoincrement = "auto_increment" in row[5] if row[5] else False
 
-            # TODO: Need to check other types.
-            if coltype_ in ("CHAR", "VARCHAR", "VARCHAR", "CHAR VARYING"):
-                coltype = re.sub(r"\(\d+\)", "", coltype_)
-                length = int(re.search("\(([\d,]+)\)", coltype_).group(1))
-                coltype = self.ischema_names.get(coltype)(length)
+            # Strip length/precision from type string for lookup
+            coltype_key = re.sub(r"\([\d,]+\)", "", coltype_raw).strip()
+
+            if coltype_key in ("CHAR", "VARCHAR", "NCHAR", "CHAR VARYING"):
+                length_match = re.search(r"\((\d+)\)", coltype_raw)
+                length = int(length_match.group(1)) if length_match else None
+                coltype = self.ischema_names[coltype_key](length)
+            elif coltype_key in ("NUMERIC", "DECIMAL"):
+                params_match = re.search(r"\((\d+)(?:,\s*(\d+))?\)", coltype_raw)
+                if params_match:
+                    precision = int(params_match.group(1))
+                    scale = int(params_match.group(2)) if params_match.group(2) else None
+                    coltype = self.ischema_names[coltype_key](precision=precision, scale=scale)
+                else:
+                    coltype = self.ischema_names[coltype_key]()
             else:
-                coltype = re.sub(r"\(\d+\)", "", coltype_)
                 try:
-                    coltype = self.ischema_names[coltype]
+                    coltype_cls = self.ischema_names[coltype_key]
+                    # Some ischema entries are classes, some are instances
+                    coltype = coltype_cls() if callable(coltype_cls) else coltype_cls
                 except KeyError:
-                    util.warn(
-                        "Did not recognize type '%s' of column '%s'"
-                        % (coltype, colname)
-                    )
+                    from sqlalchemy.sql import util
+
+                    util.warn("Did not recognize type '%s' of column '%s'" % (coltype_raw, colname))
                     coltype = sqltypes.NULLTYPE
 
-            cdit = {
-                "name": colname,
-                "type": coltype,
-                "nullable": nullable,
-                "default": default,
-                "autoincrement": autoincrement,
-            }
-            columns.append(cdit)
+            columns.append(
+                {
+                    "name": colname,
+                    "type": coltype,
+                    "nullable": nullable,
+                    "default": default_val,
+                    "autoincrement": autoincrement,
+                }
+            )
         return columns
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        """
-        Return information about the primary key constraint on table_name`
-
-        :param connection: DBAPI connection
-        :param table_name:
-        :param schema: schema name to query, if not the default schema.
-        :rtype: dict[str, list[str]]
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_pk_constraint`.
-        """
-        pk_constraint = {}
-        result = connection.execute("SHOW COLUMNS IN '{table_name}'")
+        """Return the primary key constraint for *table_name*."""
         constraint_name = None
         constrained_columns = []
+
+        quoted = self.identifier_preparer.quote_identifier(table_name)
+        result = connection.execute(text(f"SHOW COLUMNS IN {quoted}"))
         for row in result:
             if row[3] == "PRI":
                 constrained_columns.append(row[0])
-                # TODO: get constraint_name
-        pk_constraint["name"] = constraint_name
-        pk_constraint["constrained_columns"] = constrained_columns
-        return pk_constraint
 
+        # Try to find constraint name from db_constraint
+        if constrained_columns:
+            try:
+                constraint_result = connection.execute(
+                    text(
+                        "SELECT index_name FROM db_constraint "
+                        "WHERE class_name = :table AND type = 0"
+                    ),
+                    {"table": table_name},
+                )
+                row = constraint_result.fetchone()
+                if row:
+                    constraint_name = row[0]
+            except Exception:
+                pass
+
+        return {
+            "name": constraint_name,
+            "constrained_columns": constrained_columns,
+        }
+
+    @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
-        """
-        Return information about the primary key constraint on table_name`
+        """Return foreign key information for *table_name*.
 
-        :param connection: DBAPI connection
-        :param table_name:
-        :param schema: schema name to query, if not the default schema.
-        :rtype: list[dict]
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_foreign_keys`.
+        Uses ``db_constraint`` system table to retrieve FK constraints.
         """
         foreign_keys = []
+        try:
+            result = connection.execute(
+                text(
+                    "SELECT c.constraint_name, c.class_name, "
+                    "a.attr_name, c.ref_class_name, ra.attr_name "
+                    "FROM db_constraint c "
+                    "JOIN _db_index_key a ON c.index_name = a.index_name "
+                    "LEFT JOIN db_constraint rc ON c.ref_class_name = rc.class_name "
+                    "  AND rc.type = 0 "
+                    "LEFT JOIN _db_index_key ra ON rc.index_name = ra.index_name "
+                    "  AND a.key_order = ra.key_order "
+                    "WHERE c.class_name = :table AND c.type = 3 "
+                    "ORDER BY c.constraint_name, a.key_order"
+                ),
+                {"table": table_name},
+            )
+
+            fk_dict: dict[str, dict] = {}
+            for row in result:
+                name = row[0]
+                if name not in fk_dict:
+                    fk_dict[name] = {
+                        "name": name,
+                        "constrained_columns": [],
+                        "referred_schema": schema,
+                        "referred_table": row[3],
+                        "referred_columns": [],
+                    }
+                fk_dict[name]["constrained_columns"].append(row[2])
+                if row[4]:
+                    fk_dict[name]["referred_columns"].append(row[4])
+
+            foreign_keys = list(fk_dict.values())
+        except Exception:
+            pass
 
         return foreign_keys
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
-        """
-        Return a list of table names for `schema`.
-
-        :param connection: DBAPI connection
-        :param schema: schema name to query, if not the default schema.
-        :rtype: list[str]
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_table_names`.
-        """
-        table_names = []
-        if schema is None:
-            result = connection.execute(
-                text(
-                    "SELECT * FROM db_class WHERE class_type = 'CLASS' AND is_system_class='NO'"
-                )
+        """Return a list of table names for *schema*."""
+        if schema is not None:
+            return []
+        result = connection.execute(
+            text(
+                "SELECT class_name FROM db_class "
+                "WHERE class_type = 'CLASS' AND is_system_class = 'NO'"
             )
-            table_names = [row[0] for row in result]
-
-        return table_names
+        )
+        return [row[0] for row in result]
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
-        """Return a list of all view names available in the database.
-
-        :param connection: DBAPI connection
-        :param schema: schema name to query, if not the default schema.
-        :rtype: list[str]
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_names`.
-        """
-        view_names = []
+        """Return a list of view names."""
         result = connection.execute(
-            text("SELECT * FROM db_class WHERE class_type = 'VCLASS'")
+            text("SELECT class_name FROM db_class WHERE class_type = 'VCLASS'")
         )
-        view_names = [row[0] for row in result]
-        return view_names
+        return [row[0] for row in result]
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
-        """Return view definition.
-
-        :param connection: DBAPI connection
-        :param view_name: view_name name to query
-        :param schema: schema name to query, if not the default schema.
-        :rtype: str
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_view_definition`.
-        """
-        view_definition = ""
-        result = connection.execute(text(f"SHOW CREATE VIEW {view_name}"))
-        view_definition = result.fetchone()[1]
-        return view_definition
+        """Return the CREATE VIEW definition."""
+        quoted = self.identifier_preparer.quote_identifier(view_name)
+        result = connection.execute(text(f"SHOW CREATE VIEW {quoted}"))
+        row = result.fetchone()
+        return row[1] if row else None
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema=None, **kw):
-        """Return information about indexes in `table_name`.
-
-        :param connection: DBAPI connection
-        :param table_name: table name to query
-        :param schema: schema name to query, if not the default schema.
-        :rtype: list[dict]
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_indexes`.
-        """
-        # https://www.cubrid.org/manual/en/9.3.0/sql/query/show.html#show-index
+        """Return index information for *table_name*."""
         indexes = []
-        idict = {}
-        result = connection.execute(text(f"SHOW INDEXES IN {table_name}"))
+        idict: dict[str, dict] = {}
+
+        quoted = self.identifier_preparer.quote_identifier(table_name)
+        result = connection.execute(text(f"SHOW INDEXES IN {quoted}"))
         for row in result:
-            name = row[2]
-            result = connection.execute(
-                text(f"SELECT * from _db_index WHERE index_name = '{name}'")
-            )
-            is_primary_key = result.fetchone()[6]
+            index_name = row[2]
+
+            # Check if this is a primary key index
+            try:
+                pk_result = connection.execute(
+                    text("SELECT is_primary_key FROM _db_index WHERE index_name = :name"),
+                    {"name": index_name},
+                )
+                pk_row = pk_result.fetchone()
+                is_primary_key = pk_row[6] if pk_row and len(pk_row) > 6 else False
+            except Exception:
+                is_primary_key = False
 
             if not is_primary_key:
-                if name in idict:
-                    idict[name]["column_name"].append(row[4])
+                if index_name in idict:
+                    idict[index_name]["column_names"].append(row[4])
                 else:
-                    idict[name] = {
-                        "column_name": [row[4]],
+                    idict[index_name] = {
+                        "name": index_name,
+                        "column_names": [row[4]],
                         "unique": row[1] == 0,
-                        "type": row[10],
                     }
 
-        for key, value in idict.items():
-            value["name"] = key
-            indexes.append(value)
-
+        indexes = list(idict.values())
         return indexes
 
-    def get_unique_constraints(
-        self, connection, table_name, schema=None, **kw
-    ):
-        """Return information about unique constraints in `table_name`.
-
-        :param connection: DBAPI connection
-        :param view_name:
-        :param schema: schema name to query, if not the default schema.
-        :rtype: list[]
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_unique_constraints`.
-        """
+    @reflection.cache
+    def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+        """Return unique constraints for *table_name*."""
         unique_constraints = []
+        try:
+            result = connection.execute(
+                text(
+                    "SELECT c.constraint_name, a.attr_name "
+                    "FROM db_constraint c "
+                    "JOIN _db_index_key a ON c.index_name = a.index_name "
+                    "WHERE c.class_name = :table AND c.type = 1 "
+                    "ORDER BY c.constraint_name, a.key_order"
+                ),
+                {"table": table_name},
+            )
+            uc_dict: dict[str, dict] = {}
+            for row in result:
+                name = row[0]
+                if name not in uc_dict:
+                    uc_dict[name] = {"name": name, "column_names": []}
+                uc_dict[name]["column_names"].append(row[1])
+            unique_constraints = list(uc_dict.values())
+        except Exception:
+            pass
         return unique_constraints
 
+    @reflection.cache
+    def get_check_constraints(self, connection, table_name, schema=None, **kw):
+        """Return check constraints for *table_name*."""
+        # CUBRID does not expose check constraint expressions easily
+        return []
+
+    @reflection.cache
+    def get_table_comment(self, connection, table_name, schema=None, **kw):
+        """Return table comment.  CUBRID does not support table comments."""
+        return {"text": None}
+
+    def get_schema_names(self, connection, **kw):
+        """Return schema names.  CUBRID does not support schemas."""
+        return []
+
     def has_table(self, connection, table_name, schema=None, **kw):
-        """Check the existence of a particular table in the database.
-
-        :param connection: DBAPI connection
-        :param table_name: table name to query
-        :param schema: schema name to query, if not the default schema.
-        :rtype: bool
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.has_table`.
-        """
-        have = False
-
+        """Check if *table_name* exists."""
         result = connection.execute(
             text(
-                f"SELECT * FROM db_class WHERE class_type = 'CLASS' AND is_system_class='NO' AND class_name='{table_name}'"
-            )
+                "SELECT COUNT(*) FROM db_class "
+                "WHERE class_type = 'CLASS' "
+                "AND is_system_class = 'NO' "
+                "AND class_name = :name"
+            ),
+            {"name": table_name},
         )
-        have = result.fetchone() is not None
-        return have
+        return result.scalar() > 0
 
     def has_index(self, connection, table_name, index_name, schema=None):
-        """
-        Check the existence of a particular index name in the database.
+        """Check if an index exists on *table_name*."""
+        try:
+            result = connection.execute(
+                text("SELECT COUNT(*) FROM _db_index WHERE index_name = :name"),
+                {"name": index_name},
+            )
+            return result.scalar() > 0
+        except Exception:
+            return False
 
-        :param connection: DBAPI connection
-        :param view_name:
-        :param schema: schema name to query, if not the default schema.
+    def has_sequence(self, connection, sequence_name, schema=None, **kw):
+        """CUBRID does not support sequences."""
+        return False
 
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.has_index`.
-        """
-        return None
+    # ----- Connection lifecycle -----
 
     def on_connect(self):
+        """Return a callable to set up a new DBAPI connection.
+
+        Disables autocommit on the CUBRID driver so that
+        SQLAlchemy can manage transactions properly.
         """
-        Return a callable which sets up a newly created DBAPI connection.
+        isolation_level = self.isolation_level
 
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.on_connect`.
-        """
-        # see: https://docs.sqlalchemy.org/en/14/core/internals.html?highlight=on_connect#sqlalchemy.engine.default.DefaultDialect.on_connect
-        if self.isolation_level is not None:
+        def connect(conn):
+            # CUBRID Python driver defaults to autocommit=True;
+            # SA manages transactions, so we turn it off.
+            conn.set_autocommit(False)
+            if isolation_level is not None:
+                self.set_isolation_level(conn, isolation_level)
 
-            def connect(conn):
-                self.set_isolation_level(conn, self.isolation_level)
-
-            return connect
-        else:
-            return None
+        return connect
 
     def _get_server_version_info(self, connection):
-        """Retrieve the server version info from the given connection.
-
-        Returns a tuple of (`major`, `minor`, `build`, 'patch version'), four integers
-        representing the version of the attached server.
-        """
+        """Return server version as a tuple of ints."""
         versions = connection.execute(text("SELECT VERSION()")).scalar()
-        m = re.match(r"(\d+).(\d+).(\d+).(\d+)", versions)
+        m = re.match(r"(\d+)\.(\d+)\.(\d+)\.(\d+)", versions)
         if m:
             return tuple(int(x) for x in m.group(1, 2, 3, 4))
-        else:
-            return None
-
-    def _get_default_schema_name(self, connection):
-        """Return the string name of the currently selected schema from
-        the given connection.
-        """
-        return connection.execute(text("SELECT SCHEMA()")).scalar()
-
-    def reset_isolation_level(self, dbapi_conn):
-        """
-        Given a DBAPI connection, revert its isolation to the default.
-
-        :param dbapi_conn:
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.reset_isolation_level`.
-        """
         return None
 
-    def set_isolation_level(self, dbapi_conn, level):
-        """Given a DBAPI connection, set its isolation level.
+    def _get_default_schema_name(self, connection):
+        """Return the default schema name."""
+        return connection.execute(text("SELECT SCHEMA()")).scalar()
 
-        :param dbapi_conn:
-        :param level:
+    # ----- Isolation level -----
 
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.set_isolation_level`.
-        """
-        if hasattr(dbapi_conn, "connection"):
-            dbapi_conn = dbapi_conn.connection
+    # CUBRID isolation level mapping
+    # https://www.cubrid.org/manual/en/11.0/sql/transaction.html
+    _ISOLATION_LEVEL_MAP: dict[str, int] = {
+        "SERIALIZABLE": 6,
+        "REPEATABLE READ": 5,
+        "REPEATABLE READ SCHEMA, REPEATABLE READ INSTANCES": 5,
+        "READ COMMITTED": 4,
+        "REPEATABLE READ SCHEMA, READ COMMITTED INSTANCES": 4,
+        "CURSOR STABILITY": 4,
+        "REPEATABLE READ SCHEMA, READ UNCOMMITTED INSTANCES": 3,
+        "READ COMMITTED SCHEMA, READ COMMITTED INSTANCES": 2,
+        "READ COMMITTED SCHEMA, READ UNCOMMITTED INSTANCES": 1,
+    }
 
-        cursor = dbapi_conn.cursor()
-        cursor.execute(f"SET TRANSACTION ISOLATION LEVEL {level}")
-        cursor.execute("COMMIT")
-        cursor.close()
-
-    def get_isolation_level_spec(self, dbapi_conn):
-        return (
-            "SERIALIZABLE",  # 6
-            "REPEATABLE READ SCHEMA, REPETABLE READ INSTANCES",  # 5
-            "REPEATABLE READ SCHEMA, READ COMMITTED INSTANCES",  # 4
-            "CURSOR STABILITY",  # 4
-            "REPEATABLE READ SCHEMA, READ UNCOMMITTED INSTANCES",  # 3
-            "READ COMMITTED SCHEMA, READ COMMITTED INSTANCES",  # 2
-            "READ COMMITTED SCHEMA, READ UNCOMMITTED INSTANCES",  # 1
-        )
+    _ISOLATION_LEVEL_REVERSE: dict[int, str] = {
+        6: "SERIALIZABLE",
+        5: "REPEATABLE READ SCHEMA, REPEATABLE READ INSTANCES",
+        4: "REPEATABLE READ SCHEMA, READ COMMITTED INSTANCES",
+        3: "REPEATABLE READ SCHEMA, READ UNCOMMITTED INSTANCES",
+        2: "READ COMMITTED SCHEMA, READ COMMITTED INSTANCES",
+        1: "READ COMMITTED SCHEMA, READ UNCOMMITTED INSTANCES",
+    }
 
     def get_isolation_level(self, dbapi_conn):
-        """Given a DBAPI connection, return its isolation level.
-
-        :param dbapi_conn:
-
-        Overrides interface
-        :meth:`~sqlalchemy.engine.interfaces.Dialect.get_isolation_level`.
-        """
-        # see: https://www.cubrid.org/manual/en/9.3.0/sql/transaction.html?highlight=isolation%20level#transaction-isolation-level
-
+        """Return the current isolation level for *dbapi_conn*."""
+        # https://www.cubrid.org/manual/en/11.0/sql/transaction.html
         cursor = dbapi_conn.cursor()
         cursor.execute("GET TRANSACTION ISOLATION LEVEL TO X")
         cursor.execute("SELECT X")
         val = cursor.fetchone()[0]
         cursor.close()
+        # CUBRID returns numeric level; map to string for SA
+        if isinstance(val, int):
+            return self._ISOLATION_LEVEL_REVERSE.get(val, str(val))
         return val
+
+    def get_isolation_level_values(self):
+        """Return the list of valid isolation level values."""
+        return [
+            "SERIALIZABLE",
+            "REPEATABLE READ",
+            "REPEATABLE READ SCHEMA, REPEATABLE READ INSTANCES",
+            "READ COMMITTED",
+            "REPEATABLE READ SCHEMA, READ COMMITTED INSTANCES",
+            "CURSOR STABILITY",
+            "REPEATABLE READ SCHEMA, READ UNCOMMITTED INSTANCES",
+            "READ COMMITTED SCHEMA, READ COMMITTED INSTANCES",
+            "READ COMMITTED SCHEMA, READ UNCOMMITTED INSTANCES",
+        ]
+
+    def set_isolation_level(self, dbapi_conn, level):
+        """Set the isolation level for *dbapi_conn*."""
+        # Note: do NOT unwrap dbapi_conn.connection — the inner C-level
+        # _cubrid.connection cursor cannot handle SET TRANSACTION SQL.
+        # SA already passes the correct Python-level CUBRIDdb.connections.Connection.
+        # Map string level to numeric
+        numeric_level = self._ISOLATION_LEVEL_MAP.get(level.upper())
+        if numeric_level is None:
+            raise ValueError(
+                f"Invalid isolation level: {level!r}. "
+                f"Valid values: {list(self._ISOLATION_LEVEL_MAP.keys())}"
+            )
+        cursor = dbapi_conn.cursor()
+        cursor.execute(f"SET TRANSACTION ISOLATION LEVEL {numeric_level}")
+        cursor.execute("COMMIT")
+        cursor.close()
+
+    def reset_isolation_level(self, dbapi_conn):
+        """Revert isolation level to the default."""
+        # CUBRID server default is typically level 4
+        # (REPEATABLE READ SCHEMA, READ COMMITTED INSTANCES)
+        self.set_isolation_level(dbapi_conn, "READ COMMITTED")
+
+    def do_release_savepoint(self, connection, name):
+        """CUBRID does not support RELEASE SAVEPOINT; no-op."""
+        pass
 
 
 dialect = CubridDialect

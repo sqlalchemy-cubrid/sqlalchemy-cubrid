@@ -1,10 +1,13 @@
 # sqlalchemy_cubrid/base.py
-# Copyright (C) 2021-2022 by sqlalchemy-cubrid authors and contributors
+# Copyright (C) 2021-2026 by sqlalchemy-cubrid authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-cubrid and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""CUBRID identifier preparation, execution context, and reserved words."""
+
+from __future__ import annotations
 
 import re
 
@@ -16,9 +19,10 @@ AUTOCOMMIT_REGEXP = re.compile(
     r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|MERGE)", re.I | re.UNICODE
 )
 
-# CUBRID Reserved words: https://www.cubrid.org/manual/en/9.3.0/sql/keyword.html
-RESERVED_WORDS = set(
-    [
+# CUBRID Reserved words
+# https://www.cubrid.org/manual/en/11.0/sql/keyword.html
+RESERVED_WORDS = frozenset(
+    {
         "absolute",
         "action",
         "add",
@@ -366,11 +370,13 @@ RESERVED_WORDS = set(
         "year",
         "year_month",
         "zone",
-    ]
+    }
 )
 
 
 class CubridIdentifierPreparer(compiler.IdentifierPreparer):
+    """Quoting logic for CUBRID identifiers."""
+
     reserved_words = RESERVED_WORDS
 
     def __init__(
@@ -381,21 +387,42 @@ class CubridIdentifierPreparer(compiler.IdentifierPreparer):
         escape_quote='"',
         omit_schema=False,
     ):
-
-        super(CubridIdentifierPreparer, self).__init__(
-            dialect, initial_quote, final_quote, escape_quote, omit_schema
-        )
+        super().__init__(dialect, initial_quote, final_quote, escape_quote, omit_schema)
 
     def _quote_free_identifiers(self, *ids):
         """Unilaterally identifier-quote any number of strings."""
-        return tuple([self.quote_identifier(i) for i in ids if i is not None])
+        return tuple(self.quote_identifier(i) for i in ids if i is not None)
 
 
 class CubridExecutionContext(default.DefaultExecutionContext):
-    def __init__(self, dialect, connection, dbapi_connection, compiled_ddl):
-        super(CubridExecutionContext, self).__init__(
-            dialect, connection, dbapi_connection, compiled_ddl
-        )
+    """Execution context for CUBRID connections."""
 
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_REGEXP.match(statement)
+
+    def get_lastrowid(self):
+        """Return the last inserted row ID.
+
+        CUBRID's Python driver does not expose ``cursor.lastrowid``.
+        Instead, the connection object provides ``get_last_insert_id()``.
+        We also fall back to ``SELECT LAST_INSERT_ID()`` if the method
+        is unavailable.
+        """
+        try:
+            # CUBRID Python driver exposes this on the raw connection
+            raw_conn = self.root_connection.connection.dbapi_connection
+            if hasattr(raw_conn, "get_last_insert_id"):
+                return raw_conn.get_last_insert_id()
+        except Exception:
+            pass
+
+        # Fallback: use SQL function
+        cursor = self.create_server_side_cursor()
+        try:
+            cursor.execute("SELECT LAST_INSERT_ID()")
+            row = cursor.fetchone()
+            if row:
+                return int(row[0])
+        finally:
+            cursor.close()
+        return None
