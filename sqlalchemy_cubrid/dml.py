@@ -154,6 +154,24 @@ class OnDuplicateClause(ClauseElement):
 
 
 def merge(target: _DMLTableArgument) -> Merge:
+    """Construct a CUBRID-specific MERGE statement.
+
+    CUBRID's MERGE matches rows from a source against a target table
+    using an ON condition, then executes UPDATE for matched rows and/or
+    INSERT for unmatched rows.
+
+    Usage::
+
+        from sqlalchemy_cubrid import merge
+
+        stmt = (
+            merge(target_table)
+            .using(source_table)
+            .on(target_table.c.id == source_table.c.id)
+            .when_matched_then_update({"name": source_table.c.name})
+            .when_not_matched_then_insert({"id": source_table.c.id, "name": source_table.c.name})
+        )
+    """
     return Merge(target)
 
 

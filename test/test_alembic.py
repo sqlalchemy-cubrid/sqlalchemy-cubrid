@@ -18,10 +18,13 @@ import sys
 from unittest import mock
 
 import pytest
+import sqlalchemy as sa
 
-try:
+from sqlalchemy_cubrid import types as cubrid_types
+
+if sys.version_info >= (3, 11):
     import tomllib as toml_mod
-except ModuleNotFoundError:
+else:
     import tomli as toml_mod
 
 
@@ -32,6 +35,11 @@ def _load_pyproject():
     pyproject = pathlib.Path(__file__).resolve().parent.parent / "pyproject.toml"
     with open(pyproject, "rb") as f:
         return toml_mod.load(f)
+
+
+class _AutogenContext:
+    def __init__(self):
+        self.imports: set[str] = set()
 
 
 class TestCubridImpl:
@@ -118,3 +126,136 @@ class TestAlembicImportError:
                 sys.modules[module_key] = saved
             elif module_key in sys.modules:
                 del sys.modules[module_key]
+
+
+class TestCubridImplAutogenerate:
+    def test_render_type_set_multiset_sequence_with_strings(self):
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        autogen_context = _AutogenContext()
+
+        set_render = impl.render_type(cubrid_types.SET("A", "b"), autogen_context)
+        multiset_render = impl.render_type(cubrid_types.MULTISET("x", "y"), autogen_context)
+        sequence_render = impl.render_type(cubrid_types.SEQUENCE("f", "s"), autogen_context)
+
+        assert set_render == "cubrid_types.SET('A', 'b')"
+        assert multiset_render == "cubrid_types.MULTISET('x', 'y')"
+        assert sequence_render == "cubrid_types.SEQUENCE('f', 's')"
+        assert autogen_context.imports == {
+            "from sqlalchemy_cubrid import types as cubrid_types",
+        }
+
+    def test_render_type_collection_with_typeengine_values(self):
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        autogen_context = _AutogenContext()
+
+        rendered = impl.render_type(cubrid_types.SET(sa.String(), sa.Integer()), autogen_context)
+
+        assert rendered == "cubrid_types.SET(String, Integer)"
+        assert "from sqlalchemy_cubrid import types as cubrid_types" in autogen_context.imports
+
+    def test_render_type_non_cubrid_type_returns_false(self):
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        autogen_context = _AutogenContext()
+
+        assert impl.render_type(sa.String(), autogen_context) is False
+        assert autogen_context.imports == set()
+
+    def test_compare_type_set_same_values_different_order(self):
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        inspector_column = sa.Column("v", cubrid_types.SET(" A ", "B"))
+        metadata_column = sa.Column("v", cubrid_types.SET("b", "a"))
+
+        assert impl.compare_type(inspector_column, metadata_column) is False
+
+    def test_compare_type_set_different_values(self):
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        inspector_column = sa.Column("v", cubrid_types.SET("a", "b"))
+        metadata_column = sa.Column("v", cubrid_types.SET("a", "c"))
+
+        assert impl.compare_type(inspector_column, metadata_column) is True
+
+    def test_compare_type_sequence_order_matters(self):
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        inspector_column = sa.Column("v", cubrid_types.SEQUENCE("a", "b"))
+        metadata_column = sa.Column("v", cubrid_types.SEQUENCE("b", "a"))
+
+        assert impl.compare_type(inspector_column, metadata_column) is True
+
+    def test_compare_type_delegates_to_super_for_non_collection(self):
+        from alembic.ddl.impl import DefaultImpl
+
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        inspector_column = sa.Column("v", sa.String())
+        metadata_column = sa.Column("v", sa.String())
+
+        with mock.patch.object(DefaultImpl, "compare_type", return_value=True) as mock_super:
+            result = impl.compare_type(inspector_column, metadata_column)
+
+        assert result is True
+        mock_super.assert_called_once_with(inspector_column, metadata_column)
+
+    def test_normalize_collection_value_typeengine(self):
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        result = CubridImpl._normalize_collection_value(sa.String())
+        assert result == "string"
+
+    def test_normalize_collection_value_non_string_non_type(self):
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        result = CubridImpl._normalize_collection_value(42)
+        assert result == "42"
+
+    def test_render_type_cubrid_non_collection_returns_false(self):
+        """CUBRID types that are NOT collections (e.g., MONETARY) return False."""
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        autogen_context = _AutogenContext()
+
+        assert impl.render_type(cubrid_types.MONETARY(), autogen_context) is False
+        assert autogen_context.imports == set()
+
+    def test_render_type_collection_with_non_string_non_type_values(self):
+        """Values that are neither str nor TypeEngine use repr()."""
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        autogen_context = _AutogenContext()
+
+        rendered = impl.render_type(cubrid_types.SET(42, 3.14), autogen_context)
+        assert rendered == "cubrid_types.SET(42, 3.14)"
+
+    def test_compare_type_collection_vs_non_collection(self):
+        """When one type is collection and the other is not, they differ."""
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        inspector_column = sa.Column("v", cubrid_types.SET("a"))
+        metadata_column = sa.Column("v", sa.String())
+
+        assert impl.compare_type(inspector_column, metadata_column) is True
+
+    def test_compare_type_different_collection_names(self):
+        """SET vs MULTISET with same values should still differ."""
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        inspector_column = sa.Column("v", cubrid_types.SET("a", "b"))
+        metadata_column = sa.Column("v", cubrid_types.MULTISET("a", "b"))
+
+        assert impl.compare_type(inspector_column, metadata_column) is True

@@ -3,7 +3,7 @@
 ## 1. Overview
 
 **Project**: sqlalchemy-cubrid
-**Current Version**: 1.2.2
+**Current Version**: 2.0.0
 **Status**: Production-ready (revived from abandoned 0.0.1)
 **Repository**: [github.com/sqlalchemy-cubrid/sqlalchemy-cubrid](https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid)
 **License**: MIT
@@ -27,7 +27,7 @@ A complete ground-up rewrite delivering a production-ready CUBRID dialect:
 - **DML extensions** — ON DUPLICATE KEY UPDATE, MERGE, GROUP_CONCAT, TRUNCATE
 - **DDL support** — COMMENT, IF NOT EXISTS / IF EXISTS, AUTO_INCREMENT
 - **Alembic migration support** via auto-discovered entry point
-- **99% test coverage** (314 tests, 968 statements, 3 unreachable)
+- **99.45% test coverage** (396 tests, 1082 statements, 6 unreachable)
 - **CI/CD** — Python 3.10–3.13 × CUBRID 10.2–11.4 matrix
 - **7 documentation guides** covering every aspect of the dialect
 
@@ -37,13 +37,13 @@ A complete ground-up rewrite delivering a production-ready CUBRID dialect:
 |---|---|---|
 | Installable on Python 3.10+ | ✅ | ✅ `pip install sqlalchemy-cubrid` |
 | SQLAlchemy 2.0 – 2.1 compatible | ✅ | ✅ Full API compliance |
-| Offline tests (no live DB) | ✅ | ✅ 314 tests, 99% coverage |
+| Offline tests (no live DB) | ✅ | ✅ 396 tests, 99.45% coverage |
 | All dialect methods implemented | ✅ | ✅ Reflection, compilation, types |
-| CI/CD with version matrix | ✅ | ✅ Py 3.10–3.13 × CUBRID 10.2–11.4 |
+| CI/CD with version matrix | ✅ | ✅ Py 3.10–3.14 × CUBRID 10.2–11.4 |
 | Publishable to PyPI | ✅ | ✅ Release workflow on tag |
-| Alembic support | ✅ | ✅ CubridImpl auto-discovered |
-| ≥ 95% code coverage | ✅ | ✅ 99% (CI-enforced) |
-| Comprehensive documentation | ✅ | ✅ 7 guide files + README |
+| Alembic support | ✅ | ✅ CubridImpl auto-discovered + autogenerate |
+| ≥ 95% code coverage | ✅ | ✅ 99.45% (CI-enforced) |
+| Comprehensive documentation | ✅ | ✅ 8 guide files + README |
 
 ---
 
@@ -90,7 +90,7 @@ cubrid = "sqlalchemy_cubrid.alembic_impl:CubridImpl"
 
 ## 3. Implemented Features
 
-### 3.1 Type System (`types.py` — 319 lines)
+### 3.1 Type System (`types.py` — 349 lines)
 
 #### Standard SQL Types
 
@@ -235,12 +235,13 @@ stmt = (
 )
 ```
 
-### 3.5 Alembic Support (`alembic_impl.py` — 69 lines)
+### 3.5 Alembic Support (`alembic_impl.py` — 141 lines)
 
 - `CubridImpl(DefaultImpl)` with `transactional_ddl = False`
 - Auto-discovered via `alembic.ddl` entry point
+- Autogenerate: `render_type()` for SET/MULTISET/SEQUENCE rendering in migration scripts
+- Autogenerate: `compare_type()` for semantic comparison of collection types
 - Limitations: no ALTER COLUMN TYPE, no RENAME COLUMN (use `batch_alter_table`)
-
 ---
 
 ## 4. Test Coverage
@@ -250,14 +251,15 @@ stmt = (
 | Test File | Tests | Coverage Area |
 |---|---|---|
 | `test_compiler.py` | 70 | SQL compilation (SELECT, JOIN, CAST, LIMIT, DML, DDL) |
-| `test_types.py` | 48 | Type compilation, reflection, collection types |
+| `test_types.py` | 53 | Type compilation, reflection, collection, MONETARY, OBJECT |
 | `test_requirements.py` | 46 | SA 2.0 requirement flags (parametrized) |
 | `test_dialect_offline.py` | 24 | Reflection stubs, connection, isolation, savepoint |
 | `test_base.py` | 15 | ExecutionContext, IdentifierPreparer |
-| `test_dml.py` | ~80 | ON DUPLICATE KEY UPDATE, MERGE compilation |
-| `test_alembic.py` | 8 | Import, registry, entry-point, import-error |
+| `test_dml.py` | ~80 | ON DUPLICATE KEY UPDATE, MERGE, REPLACE compilation |
+| `test_alembic.py` | 21 | Import, registry, entry-point, autogenerate |
 | `test_dialects.py` | ~23 | Edge cases, dialect config |
-| **Total** | **314** | **99% coverage** |
+| `test_trace.py` | 7 | Query trace utility |
+| **Total** | **396** | **99.45% coverage** |
 
 ### 4.2 Unreachable Lines (3)
 
@@ -265,7 +267,8 @@ stmt = (
 |---|---|---|
 | `compiler.py` | 72 | `for_update_clause` returning `""` — SA always calls with valid state |
 | `compiler.py` | 84 | `limit_clause` returning `""` — SA always provides limit context |
-| `dml.py` | 259 | `else` branch in type normalization — all input types covered |
+| `compiler.py` | 298-300 | DDL type compilation fallback — all types covered |
+| `dml.py` | 310 | `else` branch in type normalization — all input types covered |
 
 ### 4.3 CI Matrix
 
@@ -322,13 +325,14 @@ Limitations imposed by CUBRID itself (not the dialect):
 
 ## 7. Release History
 
-| Version | Date | Highlights |
-|---|---|---|
 | v1.0.0 | 2026-03-12 | Complete rewrite — SA 2.0, all reflection, compiler, types, CI/CD |
 | v1.1.0 | 2026-03-12 | SQL feature expansion — FOR UPDATE, window functions, MERGE, ODKU, COMMENT, DDL extensions |
 | v1.2.0 | 2026-03-12 | Alembic support, edge-case tests, 99% coverage |
 | v1.2.1 | 2026-03-12 | Cleanup — legacy file removal, sample modernization, community files |
 | v1.2.2 | 2026-03-12 | Documentation restructuring — 6 new guide files, README rewrite |
+| v1.3.0 | 2026-03-12 | Driver & compatibility hardening — error codes, do_ping, connection pool tuning |
+| v1.4.0 | 2026-03-12 | Query feature expansion — REPLACE INTO, recursive CTEs, ODKU subqueries, trace |
+| v2.0.0 | 2026-03-12 | Type system expansion, Alembic autogenerate, SA 2.1 readiness, ORM cookbook |
 
 ---
 
@@ -339,52 +343,53 @@ Limitations imposed by CUBRID itself (not the dialect):
 **Goal**: Improve real-world usability and CUBRID driver compatibility.
 
 | Item | Description | Priority |
-|---|---|---|
-| CUBRID-Python driver audit | Test against latest CUBRID-Python releases, document version compatibility matrix | High |
-| Connection pool tuning | Test and document SA connection pool behavior with CUBRID (pool_size, pool_recycle, pool_pre_ping) | High |
-| `postfetch_lastrowid` validation | Verify `get_last_insert_id()` behavior across CUBRID versions, fix if inconsistent | High |
-| Error code mapping | Map CUBRID error codes to SA exceptions (`IntegrityError`, `OperationalError`, etc.) for proper exception handling | Medium |
-| CUBRID 12.x support | Test against CUBRID 12 when released, add to CI matrix | Medium |
-| Python 3.14 support | Add Python 3.14 to CI matrix when available | Low |
+| Item | Description | Priority | Status |
+|---|---|---|---|
+| CUBRID-Python driver audit | Test against latest CUBRID-Python releases, document version compatibility matrix | High | ✅ Done |
+| Connection pool tuning | Test and document SA connection pool behavior with CUBRID (pool_size, pool_recycle, pool_pre_ping) | High | ✅ Done |
+| `postfetch_lastrowid` validation | Verify `get_last_insert_id()` behavior across CUBRID versions, fix if inconsistent | High | ✅ Done |
+| Error code mapping | Map CUBRID error codes to SA exceptions (`IntegrityError`, `OperationalError`, etc.) for proper exception handling | Medium | ✅ Done |
+| CUBRID 12.x support | Test against CUBRID 12 when released, add to CI matrix | Medium | ⏳ Blocked (not released) |
+| Python 3.14 support | Add Python 3.14 to CI matrix when available | Low | ✅ Done |
 
 ### v1.4.0 — Query Feature Expansion
 
 **Goal**: Maximize SQL feature coverage within CUBRID's capabilities.
 
-| Item | Description | Priority |
-|---|---|---|
-| `REPLACE` statement | CUBRID supports `REPLACE INTO` — add as custom DML construct | Medium |
-| `INSERT ... ON DUPLICATE KEY UPDATE` with subqueries | Support subquery values in ODKU clause | Medium |
-| Lateral joins | Investigate CUBRID's lateral join support, enable if available | Low |
-| Recursive CTEs | Test recursive `WITH RECURSIVE` support in CUBRID 11.x+ | Low |
-| Full-text search | CUBRID has full-text indexes — expose via custom construct if feasible | Low |
-| `EXPLAIN` output | Add `EXPLAIN` prefix support for query plan inspection | Low |
+| Item | Description | Priority | Status |
+|---|---|---|---|
+| `REPLACE` statement | CUBRID supports `REPLACE INTO` — add as custom DML construct | Medium | ✅ Done |
+| `INSERT ... ON DUPLICATE KEY UPDATE` with subqueries | Support subquery values in ODKU clause | Medium | ✅ Done |
+| Lateral joins | Investigate CUBRID's lateral join support, enable if available | Low | ❌ Not supported |
+| Recursive CTEs | Test recursive `WITH RECURSIVE` support in CUBRID 11.x+ | Low | ✅ Done |
+| Full-text search | CUBRID has full-text indexes — expose via custom construct if feasible | Low | ❌ Not supported |
+| `EXPLAIN` output | Add `EXPLAIN` prefix support for query plan inspection | Low | ✅ Done (trace_query) |
 
 ### v2.0.0 — SQLAlchemy 2.1+ & Async
 
 **Goal**: Full SQLAlchemy 2.1 alignment and modern async support.
 
-| Item | Description | Priority |
-|---|---|---|
-| SQLAlchemy 2.1 compatibility | Track SA 2.1 breaking changes, update dialect accordingly | High |
-| SQLAlchemy 2.2+ forward compat | Test and adjust for future SA releases | High |
-| Async DBAPI support | If CUBRID Python driver adds async support, implement `create_async_engine` compatibility | Medium |
-| Type annotation improvements | Add full `overload` signatures for `insert()`, `merge()` return types | Medium |
-| `RETURNING` emulation | Investigate TRIGGER-based or `LAST_INSERT_ID` workaround for single-row returning | Low |
+| Item | Description | Priority | Status |
+|---|---|---|---|
+| SQLAlchemy 2.1 compatibility | Track SA 2.1 breaking changes, update dialect accordingly | High | ⏳ SA 2.1 not released |
+| SQLAlchemy 2.2+ forward compat | Test and adjust for future SA releases | High | ⏳ Not released |
+| Async DBAPI support | If CUBRID Python driver adds async support, implement `create_async_engine` compatibility | Medium | ⏳ Driver has no async |
+| Type annotation improvements | Add full `overload` signatures for `insert()`, `merge()` return types | Medium | ✅ Done |
+| `RETURNING` emulation | Investigate TRIGGER-based or `LAST_INSERT_ID` workaround for single-row returning | Low | ⏳ Not started |
 
 ### Long-Term — Community & Ecosystem
 
 **Goal**: Sustainable open-source project with active community.
 
-| Item | Description | Priority |
-|---|---|---|
-| PyPI publication | Publish to PyPI for `pip install` from registry | High |
-| Documentation site | Deploy docs via GitHub Pages or Read the Docs | Medium |
-| Alembic autogenerate tuning | Improve autogenerate for CUBRID-specific types (SET, MULTISET, SEQUENCE) | Medium |
-| SQLAlchemy test suite pass rate | Track and increase pass rate against SA's standard dialect test suite | Medium |
-| CUBRID ORM cookbook | Practical examples: relationships, eager loading, hybrid properties with CUBRID | Low |
-| Performance benchmarks | Benchmark dialect overhead vs raw CUBRID-Python for common operations | Low |
-| Community contributors | Issue templates, good-first-issue labels, contributor docs | Low |
+| Item | Description | Priority | Status |
+|---|---|---|---|
+| PyPI publication | Publish to PyPI for `pip install` from registry | High | ✅ Done |
+| Documentation site | Deploy docs via GitHub Pages or Read the Docs | Medium | ⏳ Not started |
+| Alembic autogenerate tuning | Improve autogenerate for CUBRID-specific types (SET, MULTISET, SEQUENCE) | Medium | ✅ Done |
+| SQLAlchemy test suite pass rate | Track and increase pass rate against SA's standard dialect test suite | Medium | ⏳ Not started |
+| CUBRID ORM cookbook | Practical examples: relationships, eager loading, hybrid properties with CUBRID | Low | ✅ Done |
+| Performance benchmarks | Benchmark dialect overhead vs raw CUBRID-Python for common operations | Low | ⏳ Not started |
+| Community contributors | Issue templates, good-first-issue labels, contributor docs | Low | ✅ Done (issue templates) |
 
 ### Roadmap Priorities
 
@@ -433,4 +438,4 @@ by SQLite's dialect for the same reason.
 
 ---
 
-*Last updated: March 2026 · sqlalchemy-cubrid v1.2.2*
+*Last updated: March 2026 · sqlalchemy-cubrid v2.0.0*

@@ -19,10 +19,12 @@ from sqlalchemy_cubrid.types import (
     DOUBLE,
     DOUBLE_PRECISION,
     FLOAT,
+    MONETARY,
     MULTISET,
     NCHAR,
     NUMERIC,
     NVARCHAR,
+    OBJECT,
     REAL,
     SEQUENCE,
     SET,
@@ -91,6 +93,12 @@ class TestVisitNames:
 
     def test_sequence(self):
         assert SEQUENCE.__visit_name__ == "SEQUENCE"
+
+    def test_monetary(self):
+        assert MONETARY.__visit_name__ == "MONETARY"
+
+    def test_object(self):
+        assert OBJECT.__visit_name__ == "OBJECT"
 
 
 class TestTypeInstantiation:
@@ -175,6 +183,13 @@ class TestTypeInstantiation:
         t = CLOB()
         assert isinstance(t, sqltypes.Text)
 
+    def test_monetary(self):
+        t = MONETARY()
+        assert isinstance(t, sqltypes.TypeEngine)
+
+    def test_object(self):
+        t = OBJECT()
+        assert isinstance(t, sqltypes.TypeEngine)
 
 class TestCollectionTypes:
     """Test SET, MULTISET, SEQUENCE (CUBRID collection types)."""

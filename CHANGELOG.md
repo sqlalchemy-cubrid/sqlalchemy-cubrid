@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-03-12
+
+### Added
+- **`MONETARY` type class**: New `TypeEngine` subclass for CUBRID's monetary data type.
+  Stores monetary values with currency — internally represented as DOUBLE with currency code.
+- **`OBJECT` type class**: New `TypeEngine` subclass for CUBRID's OID reference type.
+  Represents a reference to another CUBRID class instance.
+- **Alembic autogenerate support**: `CubridImpl` now implements `render_type()` and
+  `compare_type()` for CUBRID collection types (SET, MULTISET, SEQUENCE).
+  Collection type comparison uses semantic equality (unordered for SET/MULTISET,
+  ordered for SEQUENCE). CUBRID type imports are auto-added to migration scripts.
+- **`merge()` factory function docstring**: Comprehensive docstring documenting all
+  chaining methods (`.using()`, `.on()`, `.when_matched_then_update()`,
+  `.when_not_matched_then_insert()`) with usage examples.
+- **GitHub issue templates**: Bug report and feature request forms (`.github/ISSUE_TEMPLATE/`).
+- **ORM Cookbook**: `docs/ORM_COOKBOOK.md` — practical ORM usage examples with CUBRID-specific
+  patterns, collection types, DML extensions, and gotchas.
+- **10 new offline tests**: MONETARY/OBJECT type tests (4), Alembic autogenerate tests (6).
+  Total: 396 offline tests, 99.45% coverage.
+
+### Changed
+- `alembic_impl.py`: Expanded from 69 lines to 141 lines with full autogenerate support.
+- `types.py`: Added MONETARY and OBJECT classes (319 → 349 lines).
+- `__init__.py`: Exported MONETARY and OBJECT types.
+- Version bumped to 2.0.0.
+
+### Investigated (Blocked)
+- **SQLAlchemy 2.1 compatibility**: SA 2.1 does not exist yet (latest: 2.0.48).
+  All 396 tests pass with SA 2.0.48 — readiness confirmed.
+- **Async DBAPI support**: CUBRID Python driver has no async support — blocked.
+
+
 ## [1.4.0] - 2026-03-12
 
 ### Added

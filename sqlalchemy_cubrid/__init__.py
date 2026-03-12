@@ -25,10 +25,12 @@ from .types import (
     DOUBLE,
     DOUBLE_PRECISION,
     FLOAT,
+    MONETARY,
     MULTISET,
     NCHAR,
     NUMERIC,
     NVARCHAR,
+    OBJECT,
     REAL,
     SEQUENCE,
     SET,
@@ -47,7 +49,7 @@ from sqlalchemy.sql.sqltypes import (
     TIMESTAMP,
 )
 
-__version__ = "1.4.0"
+__version__ = "2.0.0"
 
 __all__ = (
     "insert",
@@ -63,6 +65,7 @@ __all__ = (
     "REAL",
     "DOUBLE",
     "DOUBLE_PRECISION",
+    "MONETARY",
     "DATE",
     "TIME",
     "TIMESTAMP",
@@ -78,4 +81,5 @@ __all__ = (
     "SET",
     "MULTISET",
     "SEQUENCE",
+    "OBJECT",
 )

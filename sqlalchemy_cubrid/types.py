@@ -317,3 +317,33 @@ class SEQUENCE(_StringType):
         """Construct a SEQUENCE."""
         self._ddl_values = values
         super().__init__(**kw)
+
+
+# ---------------------------------------------------------------------------
+# Monetary Type
+# ---------------------------------------------------------------------------
+
+
+class MONETARY(sqltypes.TypeEngine):
+    """CUBRID MONETARY type.
+
+    Stores monetary values with currency.  Internally represented as a
+    DOUBLE with an associated currency code.
+    """
+
+    __visit_name__ = "MONETARY"
+
+
+# ---------------------------------------------------------------------------
+# Object Type
+# ---------------------------------------------------------------------------
+
+
+class OBJECT(sqltypes.TypeEngine):
+    """CUBRID OBJECT type.
+
+    Represents a reference to another CUBRID class instance (OID).
+    This is a CUBRID-specific type with no direct equivalent in other databases.
+    """
+
+    __visit_name__ = "OBJECT"

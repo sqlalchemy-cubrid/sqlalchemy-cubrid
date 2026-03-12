@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: SQLAlchemy Documentation
+    url: https://docs.sqlalchemy.org/
+    about: Official SQLAlchemy documentation and guides
+  - name: CUBRID Documentation
+    url: https://cubrid.org/documentation
+    about: Official CUBRID database documentation
