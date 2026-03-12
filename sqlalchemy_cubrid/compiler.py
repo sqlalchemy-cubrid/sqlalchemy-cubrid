@@ -119,6 +119,9 @@ class CubridCompiler(compiler.SQLCompiler):
         from sqlalchemy.sql.expression import literal_column
 
         statement = self.current_executable
+        table = getattr(statement, "table", None)
+        if table is None:
+            return "ON DUPLICATE KEY UPDATE"
 
         if on_duplicate._parameter_ordering:
             parameter_ordering = [
@@ -127,12 +130,12 @@ class CubridCompiler(compiler.SQLCompiler):
             ]
             ordered_keys = set(parameter_ordering)
             cols = [
-                statement.table.c[key]
+                table.c[key]
                 for key in parameter_ordering
-                if key in statement.table.c
-            ] + [c for c in statement.table.c if c.key not in ordered_keys]
+                if key in table.c
+            ] + [c for c in table.c if c.key not in ordered_keys]
         else:
-            cols = list(statement.table.c)
+            cols = list(table.c)
 
         clauses = []
         on_duplicate_update = {
@@ -173,16 +176,130 @@ class CubridCompiler(compiler.SQLCompiler):
         if non_matching:
             from sqlalchemy import util
 
+            table_name = getattr(table, "name", "<unknown>")
             util.warn(
                 "Additional column names not matching "
                 "any column keys in table '%s': %s"
                 % (
-                    self.statement.table.name,
+                    table_name,
                     (", ".join("'%s'" % c for c in non_matching)),
                 )
             )
 
         return f"ON DUPLICATE KEY UPDATE {', '.join(clauses)}"
+
+    def visit_merge(self, merge_stmt, **kw):
+        from sqlalchemy import exc
+        from sqlalchemy.sql import coercions, elements
+
+        target = merge_stmt._target
+        source = merge_stmt._using_source
+        on_condition = merge_stmt._on_condition
+        when_matched = merge_stmt._when_matched
+        when_not_matched = merge_stmt._when_not_matched
+
+        if target is None:
+            raise exc.CompileError("MERGE statement requires a target table")
+        if source is None:
+            raise exc.CompileError("MERGE statement requires a USING source")
+        if on_condition is None:
+            raise exc.CompileError("MERGE statement requires an ON condition")
+        if when_matched is None and when_not_matched is None:
+            raise exc.CompileError(
+                "MERGE statement must include WHEN MATCHED and/or WHEN NOT MATCHED"
+            )
+
+        target_columns = getattr(target, "c", None)
+
+        def _resolve_target_column(column_key):
+            if isinstance(column_key, str):
+                if target_columns is not None and column_key in target_columns:
+                    return target_columns[column_key]
+                return None
+            if hasattr(column_key, "name"):
+                return column_key
+            return None
+
+        def _render_column_name(column_key):
+            if isinstance(column_key, str):
+                return self.preparer.quote(column_key)
+            if hasattr(column_key, "name"):
+                return self.preparer.quote(column_key.name)
+            return self.process(column_key, **kw)
+
+        def _render_value(value, target_column):
+            if coercions._is_literal(value):
+                value = elements.BindParameter(
+                    None,
+                    value,
+                    type_=getattr(target_column, "type", None),
+                )
+            return self.process(value.self_group(), use_schema=False, **kw)
+
+        lines = [
+            f"MERGE INTO {self.process(target, asfrom=True, **kw)}",
+            f"USING {self.process(source, asfrom=True, **kw)}",
+            f"ON ({self.process(on_condition, **kw)})",
+        ]
+
+        if when_matched is not None:
+            matched_values = when_matched.get("values") or {}
+            if not matched_values:
+                raise exc.CompileError(
+                    "MERGE WHEN MATCHED clause requires at least one UPDATE value"
+                )
+
+            set_clauses = []
+            for column_key, value in matched_values.items():
+                target_column = _resolve_target_column(column_key)
+                set_clauses.append(
+                    f"{_render_column_name(column_key)} = "
+                    f"{_render_value(value, target_column)}"
+                )
+
+            matched_clause = f"WHEN MATCHED THEN UPDATE SET {', '.join(set_clauses)}"
+            matched_where = when_matched.get("where")
+            if matched_where is not None:
+                matched_clause += f" WHERE {self.process(matched_where, **kw)}"
+
+            delete_where = when_matched.get("delete_where")
+            if delete_where is not None:
+                matched_clause += f" DELETE WHERE {self.process(delete_where, **kw)}"
+
+            lines.append(matched_clause)
+
+        if when_not_matched is not None:
+            insert_columns = when_not_matched.get("columns") or []
+            insert_values = when_not_matched.get("values") or []
+
+            if not insert_columns or not insert_values:
+                raise exc.CompileError(
+                    "MERGE WHEN NOT MATCHED clause requires INSERT columns and values"
+                )
+            if len(insert_columns) != len(insert_values):
+                raise exc.CompileError(
+                    "MERGE WHEN NOT MATCHED INSERT columns and values must match"
+                )
+
+            rendered_columns = []
+            rendered_values = []
+            for column_key, value in zip(insert_columns, insert_values):
+                target_column = _resolve_target_column(column_key)
+                rendered_columns.append(_render_column_name(column_key))
+                rendered_values.append(_render_value(value, target_column))
+
+            not_matched_clause = (
+                "WHEN NOT MATCHED THEN INSERT "
+                f"({', '.join(rendered_columns)}) "
+                f"VALUES ({', '.join(rendered_values)})"
+            )
+            insert_where = when_not_matched.get("where")
+            if insert_where is not None:
+                not_matched_clause += f" WHERE {self.process(insert_where, **kw)}"
+
+            lines.append(not_matched_clause)
+
+        return "\n".join(lines)
 
 
 class CubridDDLCompiler(compiler.DDLCompiler):

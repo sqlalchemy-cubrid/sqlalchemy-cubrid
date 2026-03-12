@@ -884,3 +884,229 @@ class TestDmlModule:
         stmt = stmt.on_duplicate_key_update(name="x")
         with pytest.raises(Exception):
             stmt.on_duplicate_key_update(name="y")
+
+
+class TestMergeCompilation:
+    source = Table(
+        "source_data",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("name", String(100)),
+        Column("email", String(200)),
+    )
+
+    def test_merge_when_matched_update(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_matched_then_update(
+            {"name": self.source.c.name, "email": self.source.c.email}
+        )
+        sql = _compile(stmt)
+        assert "MERGE INTO" in sql
+        assert "USING" in sql
+        assert "ON" in sql
+        assert "WHEN MATCHED THEN UPDATE SET" in sql
+
+    def test_merge_when_not_matched_insert(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_not_matched_then_insert(
+            {
+                "id": self.source.c.id,
+                "name": self.source.c.name,
+                "email": self.source.c.email,
+            }
+        )
+        sql = _compile(stmt)
+        assert "MERGE INTO" in sql
+        assert "WHEN NOT MATCHED THEN INSERT" in sql
+        assert "VALUES" in sql
+
+    def test_merge_both_clauses(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_matched_then_update({"name": self.source.c.name})
+        stmt = stmt.when_not_matched_then_insert(
+            {
+                "id": self.source.c.id,
+                "name": self.source.c.name,
+                "email": self.source.c.email,
+            }
+        )
+        sql = _compile(stmt)
+        assert "WHEN MATCHED THEN UPDATE SET" in sql
+        assert "WHEN NOT MATCHED THEN INSERT" in sql
+
+    def test_merge_when_matched_with_where(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_matched_then_update(
+            {"name": self.source.c.name},
+            where=self.source.c.name.is_not(None),
+        )
+        sql = _compile(stmt)
+        assert "WHEN MATCHED THEN UPDATE SET" in sql
+        assert "WHERE" in sql
+
+    def test_merge_when_matched_with_delete_where(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_matched_then_update(
+            {"name": self.source.c.name},
+            delete_where=users.c.name.is_(None),
+        )
+        sql = _compile(stmt)
+        assert "DELETE WHERE" in sql
+
+    def test_merge_when_not_matched_with_where(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_not_matched_then_insert(
+            {
+                "id": self.source.c.id,
+                "name": self.source.c.name,
+                "email": self.source.c.email,
+            },
+            where=self.source.c.name.is_not(None),
+        )
+        sql = _compile(stmt)
+        assert "WHEN NOT MATCHED THEN INSERT" in sql
+        assert "WHERE" in sql
+
+    def test_merge_factory_function(self):
+        from sqlalchemy_cubrid.dml import Merge, merge
+
+        stmt = merge(users)
+        assert isinstance(stmt, Merge)
+
+    def test_merge_exported_from_package(self):
+        from sqlalchemy_cubrid import merge as package_merge
+        from sqlalchemy_cubrid.dml import merge as dml_merge
+
+        assert package_merge is dml_merge
+
+    def test_merge_no_when_clause_raises(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        with pytest.raises(Exception):
+            _compile(stmt)
+
+    def test_merge_with_subquery_source(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        subq = select(self.source).where(self.source.c.id > 0).subquery()
+        stmt = merge(users).using(subq).on(users.c.id == subq.c.id)
+        stmt = stmt.when_matched_then_update({"name": subq.c.name})
+        sql = _compile(stmt)
+        assert "MERGE INTO" in sql
+        assert "USING" in sql
+        assert "SELECT" in sql or "select" in sql.lower()
+
+    def test_merge_when_matched_then_delete(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_matched_then_update({"name": self.source.c.name})
+        stmt = stmt.when_matched_then_delete(users.c.name.is_(None))
+        sql = _compile(stmt)
+        assert "DELETE WHERE" in sql
+
+    def test_merge_when_matched_then_delete_without_update_raises(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        with pytest.raises(ValueError):
+            stmt.when_matched_then_delete(users.c.name.is_(None))
+
+    def test_merge_when_not_matched_insert_with_tuple_list(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_not_matched_then_insert(
+            [
+                ("id", self.source.c.id),
+                ("name", self.source.c.name),
+                ("email", self.source.c.email),
+            ]
+        )
+        sql = _compile(stmt)
+        assert "WHEN NOT MATCHED THEN INSERT" in sql
+        assert "VALUES" in sql
+
+    def test_merge_when_not_matched_insert_with_column_list(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_not_matched_then_insert(
+            [self.source.c.id, self.source.c.name, self.source.c.email]
+        )
+        sql = _compile(stmt)
+        assert "WHEN NOT MATCHED THEN INSERT" in sql
+        assert "VALUES" in sql
+
+    def test_merge_when_matched_literal_value(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_matched_then_update({"name": "updated"})
+        sql = _compile(stmt)
+        assert "WHEN MATCHED THEN UPDATE SET" in sql
+        assert "'updated'" in sql
+
+    def test_merge_when_matched_column_key(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_matched_then_update({users.c.name: self.source.c.name})
+        sql = _compile(stmt)
+        assert "WHEN MATCHED THEN UPDATE SET" in sql
+        assert "name" in sql
+
+    def test_merge_when_matched_update_invalid_values_raises(self):
+        from typing import cast
+
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users)
+        invalid_values = cast(
+            list[tuple[object, object]],
+            cast(object, [users.c.name]),
+        )
+        with pytest.raises(ValueError):
+            stmt.when_matched_then_update(invalid_values)
+
+    def test_merge_when_not_matched_insert_invalid_values_raises(self):
+        from typing import cast
+
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users)
+        invalid_values = cast(
+            dict[str, object],
+            cast(object, "invalid"),
+        )
+        with pytest.raises(ValueError):
+            stmt.when_not_matched_then_insert(invalid_values)
+
+    def test_merge_missing_using_raises(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).on(users.c.id == self.source.c.id)
+        stmt = stmt.when_matched_then_update({"name": self.source.c.name})
+        with pytest.raises(Exception):
+            _compile(stmt)
+
+    def test_merge_missing_on_raises(self):
+        from sqlalchemy_cubrid.dml import merge
+
+        stmt = merge(users).using(self.source)
+        stmt = stmt.when_matched_then_update({"name": self.source.c.name})
+        with pytest.raises(Exception):
+            _compile(stmt)

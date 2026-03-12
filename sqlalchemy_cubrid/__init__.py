@@ -36,7 +36,7 @@ from .types import (
     STRING,
     VARCHAR,
 )
-from .dml import insert
+from .dml import insert, merge
 
 from sqlalchemy.sql.sqltypes import (
     DATE,
@@ -50,6 +50,7 @@ __version__ = "1.0.0"
 
 __all__ = (
     "insert",
+    "merge",
     "SMALLINT",
     "INTEGER",
     "BIGINT",
