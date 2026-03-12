@@ -7,6 +7,7 @@ a database connection.
 
 from __future__ import annotations
 
+import pytest
 import sqlalchemy as sa
 from sqlalchemy import Column, Integer, MetaData, String, Table, select
 
@@ -755,3 +756,131 @@ class TestUpdateCompilation:
         stmt = update(users).values(name="test")
         sql = _compile(stmt)
         assert "UPDATE" in sql
+
+
+class TestOnDuplicateKeyUpdateCompilation:
+    """Test ON DUPLICATE KEY UPDATE compilation."""
+
+    def test_on_duplicate_key_update_basic(self):
+        """ON DUPLICATE KEY UPDATE with simple column=value."""
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test", email="test@example.com")
+        stmt = stmt.on_duplicate_key_update(name="updated")
+        sql = _compile(stmt)
+        assert "ON DUPLICATE KEY UPDATE" in sql
+        assert "name" in sql
+
+    def test_on_duplicate_key_update_with_values_ref(self):
+        """ON DUPLICATE KEY UPDATE referencing inserted values via VALUES()."""
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test", email="test@example.com")
+        stmt = stmt.on_duplicate_key_update(name=stmt.inserted.name)
+        sql = _compile(stmt)
+        assert "ON DUPLICATE KEY UPDATE" in sql
+        assert "VALUES(" in sql
+
+    def test_on_duplicate_key_update_dict_arg(self):
+        """ON DUPLICATE KEY UPDATE with dict argument."""
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test", email="test@example.com")
+        stmt = stmt.on_duplicate_key_update({"name": "updated", "email": "new@example.com"})
+        sql = _compile(stmt)
+        assert "ON DUPLICATE KEY UPDATE" in sql
+
+    def test_on_duplicate_key_update_ordered_list(self):
+        """ON DUPLICATE KEY UPDATE with ordered list of tuples."""
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test", email="test@example.com")
+        stmt = stmt.on_duplicate_key_update([("name", "updated"), ("email", "new@example.com")])
+        sql = _compile(stmt)
+        assert "ON DUPLICATE KEY UPDATE" in sql
+
+
+class TestTruncateCompilation:
+    """Test TRUNCATE TABLE compilation."""
+
+    def test_truncate_basic(self):
+        """TRUNCATE TABLE should compile."""
+        from sqlalchemy import text
+
+        sql = str(text("TRUNCATE TABLE users"))
+        assert "TRUNCATE" in sql
+
+
+class TestGroupConcatCompilation:
+    """Test GROUP_CONCAT function compilation."""
+
+    def test_group_concat_basic(self):
+        """GROUP_CONCAT() should compile via visit_group_concat_func."""
+        stmt = select(sa.func.group_concat(users.c.name))
+        sql = _compile(stmt)
+        assert "GROUP_CONCAT" in sql
+        assert "users.name" in sql
+
+    def test_group_concat_with_separator(self):
+        """GROUP_CONCAT with separator literal."""
+        stmt = select(sa.func.group_concat(users.c.name, sa.literal_column("SEPARATOR ','")))
+        sql = _compile(stmt)
+        assert "GROUP_CONCAT" in sql
+
+
+class TestDmlModule:
+    """Test dml.py module constructs."""
+
+    def test_insert_function_returns_cubrid_insert(self):
+        from sqlalchemy_cubrid.dml import Insert, insert
+
+        stmt = insert(users)
+        assert isinstance(stmt, Insert)
+
+    def test_on_duplicate_key_update_empty_dict_raises(self):
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test")
+        with pytest.raises(ValueError, match="must not be empty"):
+            stmt.on_duplicate_key_update({})
+
+    def test_on_duplicate_key_update_invalid_type_raises(self):
+        from typing import cast
+
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test")
+        invalid_value = cast(dict[str, object], cast(object, "invalid"))
+        with pytest.raises(ValueError, match="must be a non-empty dictionary"):
+            stmt.on_duplicate_key_update(invalid_value)
+
+    def test_on_duplicate_key_update_both_args_and_kwargs_raises(self):
+        from sqlalchemy import exc
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test")
+        with pytest.raises(exc.ArgumentError):
+            stmt.on_duplicate_key_update({"name": "x"}, email="y")
+
+    def test_on_duplicate_key_update_multiple_args_raises(self):
+        from sqlalchemy import exc
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test")
+        with pytest.raises(exc.ArgumentError):
+            stmt.on_duplicate_key_update({"name": "x"}, {"email": "y"})
+
+    def test_inserted_property(self):
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users)
+        assert hasattr(stmt.inserted, "id")
+        assert hasattr(stmt.inserted, "name")
+
+    def test_duplicate_on_duplicate_clause_raises(self):
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test")
+        stmt = stmt.on_duplicate_key_update(name="x")
+        with pytest.raises(Exception):
+            stmt.on_duplicate_key_update(name="y")

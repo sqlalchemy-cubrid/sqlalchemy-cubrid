@@ -16,7 +16,7 @@ from sqlalchemy.sql import compiler
 
 
 AUTOCOMMIT_REGEXP = re.compile(
-    r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|MERGE)", re.I | re.UNICODE
+    r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|MERGE|TRUNCATE)", re.I | re.UNICODE
 )
 
 # CUBRID Reserved words

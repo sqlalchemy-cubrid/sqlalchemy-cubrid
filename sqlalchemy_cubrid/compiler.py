@@ -22,6 +22,13 @@ class CubridCompiler(compiler.SQLCompiler):
     def visit_utc_timestamp_func(self, fn, **kw):
         return "UTC_TIME()"
 
+    def visit_group_concat_func(self, fn, **kw):
+        """Render GROUP_CONCAT aggregate function.
+
+        CUBRID supports GROUP_CONCAT([DISTINCT] expr [ORDER BY ...] [SEPARATOR '...'])
+        """
+        return "GROUP_CONCAT(%s)" % self.function_argspec(fn, **kw)
+
     def visit_cast(self, cast, **kw):
         # https://www.cubrid.org/manual/en/11.0/sql/function/typecast_fn.html#cast
         type_ = self.process(cast.typeclause)
@@ -101,6 +108,81 @@ class CubridCompiler(compiler.SQLCompiler):
 
     def update_from_clause(self, update_stmt, from_table, extra_froms, from_hints, **kw):
         return None
+
+    def visit_on_duplicate_key_update(self, on_duplicate, **kw):
+        """Render ON DUPLICATE KEY UPDATE clause.
+
+        CUBRID uses VALUES() function to reference inserted values,
+        identical to MySQL's pre-8.0 syntax.
+        """
+        from sqlalchemy.sql import coercions, elements, roles, visitors
+        from sqlalchemy.sql.expression import literal_column
+
+        statement = self.current_executable
+
+        if on_duplicate._parameter_ordering:
+            parameter_ordering = [
+                coercions.expect(roles.DMLColumnRole, key)
+                for key in on_duplicate._parameter_ordering
+            ]
+            ordered_keys = set(parameter_ordering)
+            cols = [
+                statement.table.c[key]
+                for key in parameter_ordering
+                if key in statement.table.c
+            ] + [c for c in statement.table.c if c.key not in ordered_keys]
+        else:
+            cols = list(statement.table.c)
+
+        clauses = []
+        on_duplicate_update = {
+            coercions.expect_as_key(roles.DMLColumnRole, key): value
+            for key, value in on_duplicate.update.items()
+        }
+
+        for column in (col for col in cols if col.key in on_duplicate_update):
+            val = on_duplicate_update[column.key]
+            if coercions._is_literal(val):
+                val = elements.BindParameter(None, val, type_=column.type)
+                value_text = self.process(val.self_group(), use_schema=False)
+            else:
+
+                def replace(element, captured_column=column, **kw):
+                    if (
+                        isinstance(element, elements.BindParameter)
+                        and element.type._isnull
+                    ):
+                        return element._with_binary_element_type(captured_column.type)
+                    elif (
+                        isinstance(element, elements.ColumnClause)
+                        and element.table is on_duplicate.inserted_alias
+                    ):
+                        return literal_column(
+                            f"VALUES({self.preparer.quote(element.name)})"
+                        )
+                    else:
+                        return None
+
+                val = visitors.replacement_traverse(val, {}, replace)
+                value_text = self.process(val.self_group(), use_schema=False)
+
+            name_text = self.preparer.quote(column.name)
+            clauses.append(f"{name_text} = {value_text}")
+
+        non_matching = set(on_duplicate_update) - {c.key for c in cols}
+        if non_matching:
+            from sqlalchemy import util
+
+            util.warn(
+                "Additional column names not matching "
+                "any column keys in table '%s': %s"
+                % (
+                    self.statement.table.name,
+                    (", ".join("'%s'" % c for c in non_matching)),
+                )
+            )
+
+        return f"ON DUPLICATE KEY UPDATE {', '.join(clauses)}"
 
 
 class CubridDDLCompiler(compiler.DDLCompiler):

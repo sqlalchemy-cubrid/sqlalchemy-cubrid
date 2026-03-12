@@ -25,6 +25,7 @@ class TestAutocommitRegexp:
             "drop table users",
             "ALTER TABLE users ADD COLUMN email VARCHAR(100)",
             "MERGE INTO users u USING src s ON (u.id = s.id)",
+            "TRUNCATE TABLE users",
         ],
     )
     def test_matches_writes(self, statement):
