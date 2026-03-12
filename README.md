@@ -3,8 +3,8 @@ sqlalchemy-cubrid
 
 CUBRID dialect for SQLAlchemy 2.0+.
 
-[![CI](https://github.com/paikend/sqlalchemy-cubrid/actions/workflows/ci.yml/badge.svg)](https://github.com/paikend/sqlalchemy-cubrid/actions/workflows/ci.yml)
-[![lint](https://github.com/paikend/sqlalchemy-cubrid/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/paikend/sqlalchemy-cubrid/actions/workflows/pre-commit.yml)
+[![CI](https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid/actions/workflows/ci.yml/badge.svg)](https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid/actions/workflows/ci.yml)
+[![lint](https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid/actions/workflows/pre-commit.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![SQLAlchemy 2.0](https://img.shields.io/badge/SQLAlchemy-2.0-green.svg)](https://www.sqlalchemy.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -161,7 +161,7 @@ Known Limitations
 | Multi-schema | ❌ | Single-schema model |
 | Temporary tables | ❌ | Not confirmed in CUBRID |
 | `IS DISTINCT FROM` | ❌ | Not supported by CUBRID |
-| Alembic migrations | ❌ | Not yet implemented |
+| Alembic migrations | ✅ | Supported via `alembic_cubrid` implementation |
 
 For a detailed feature-by-feature comparison with MySQL, PostgreSQL, and SQLite,
 see [Feature Support Comparison](docs/FEATURE_SUPPORT.md).
@@ -188,7 +188,7 @@ Development
 
 ```bash
 # Clone and install
-git clone https://github.com/paikend/sqlalchemy-cubrid.git
+git clone https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid.git
 cd sqlalchemy-cubrid
 make install
 ```

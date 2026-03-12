@@ -40,9 +40,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/paikend/sqlalchemy-cubrid"
-Repository = "https://github.com/paikend/sqlalchemy-cubrid"
-Documentation = "https://github.com/paikend/sqlalchemy-cubrid"
+Homepage = "https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid"
+Repository = "https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid"
+Documentation = "https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid"
 
 [project.entry-points."sqlalchemy.dialects"]
 cubrid = "sqlalchemy_cubrid.dialect:CubridDialect"
