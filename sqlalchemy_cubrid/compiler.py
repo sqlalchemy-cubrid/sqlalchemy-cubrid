@@ -291,6 +291,14 @@ class CubridCompiler(compiler.SQLCompiler):
 
         return "\n".join(lines)
 
+    def visit_replace(self, replace_stmt, **kw):
+        text = super().visit_insert(replace_stmt, **kw)
+        if "INSERT INTO" in text:
+            return text.replace("INSERT INTO", "REPLACE INTO", 1)
+        if text.startswith("INSERT"):
+            return "REPLACE" + text[len("INSERT") :]
+        return text
+
 
 class CubridDDLCompiler(compiler.DDLCompiler):
     """DDLCompiler subclass for CUBRID.

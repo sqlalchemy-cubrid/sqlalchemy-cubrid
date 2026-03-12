@@ -804,6 +804,80 @@ class TestOnDuplicateKeyUpdateCompilation:
         sql = _compile(stmt)
         assert "ON DUPLICATE KEY UPDATE" in sql
 
+    def test_on_duplicate_key_update_with_subquery(self):
+        """ON DUPLICATE KEY UPDATE with subquery value expression."""
+        from sqlalchemy_cubrid.dml import insert
+
+        # CUBRID supports subquery expressions in ODKU update values
+        subq = sa.select(sa.func.max(users.c.id)).scalar_subquery()
+        stmt = insert(users).values(id=1, name="test", email="test@example.com")
+        stmt = stmt.on_duplicate_key_update(id=subq)
+        sql = _compile(stmt)
+        assert "ON DUPLICATE KEY UPDATE" in sql
+        assert "SELECT max(users.id)" in sql.replace("\n", " ")
+
+    def test_on_duplicate_key_update_with_expression(self):
+        """ON DUPLICATE KEY UPDATE with arithmetic expression."""
+        from sqlalchemy_cubrid.dml import insert
+
+        stmt = insert(users).values(id=1, name="test", email="test@example.com")
+        stmt = stmt.on_duplicate_key_update(name=sa.literal_column("'prefix_' || name"))
+        sql = _compile(stmt)
+        assert "ON DUPLICATE KEY UPDATE" in sql
+        assert "'prefix_' || name" in sql
+
+
+class TestReplaceCompilation:
+    def test_replace_basic(self):
+        from sqlalchemy_cubrid.dml import replace
+
+        stmt = replace(users).values(name="test", email="test@test.com")
+        sql = _compile(stmt)
+        assert sql.startswith("REPLACE INTO")
+        assert "users" in sql
+        assert "'test'" in sql
+
+    def test_replace_no_values(self):
+        from sqlalchemy_cubrid.dml import replace
+
+        stmt = replace(users)
+        sql = _compile(stmt)
+        assert sql.startswith("REPLACE INTO")
+
+    def test_replace_with_columns(self):
+        from sqlalchemy_cubrid.dml import replace
+
+        stmt = replace(users).values(id=1, name="test", email="t@t.com")
+        sql = _compile(stmt)
+        assert "REPLACE INTO" in sql
+        assert "INSERT" not in sql
+
+    def test_replace_exported_from_package(self):
+        from sqlalchemy_cubrid import replace as pkg_replace
+        from sqlalchemy_cubrid.dml import replace as dml_replace
+
+        assert pkg_replace is dml_replace
+
+    def test_replace_is_not_insert(self):
+        from sqlalchemy_cubrid.dml import replace
+
+        stmt = replace(users).values(name="test")
+        sql = _compile(stmt)
+        assert not sql.startswith("INSERT")
+        assert sql.startswith("REPLACE")
+
+    def test_replace_factory_function(self):
+        from sqlalchemy_cubrid.dml import Replace, replace
+
+        stmt = replace(users)
+        assert isinstance(stmt, Replace)
+
+    def test_replace_inherits_insert(self):
+        from sqlalchemy_cubrid.dml import Replace
+        from sqlalchemy.sql.dml import Insert as StandardInsert
+
+        assert issubclass(Replace, StandardInsert)
+
 
 class TestTruncateCompilation:
     """Test TRUNCATE TABLE compilation."""
@@ -831,6 +905,52 @@ class TestGroupConcatCompilation:
         stmt = select(sa.func.group_concat(users.c.name, sa.literal_column("SEPARATOR ','")))
         sql = _compile(stmt)
         assert "GROUP_CONCAT" in sql
+
+
+class TestRecursiveCTECompilation:
+    """Test recursive CTE (WITH RECURSIVE) compilation."""
+
+    def test_recursive_cte_basic(self):
+        """WITH RECURSIVE should compile correctly."""
+        cte = (
+            sa.select(sa.literal(1).label("n"))
+            .cte(name="counter", recursive=True)
+        )
+        cte_alias = cte.alias()
+        cte = cte.union_all(
+            sa.select((cte_alias.c.n + 1).label("n")).where(cte_alias.c.n < 5)
+        )
+        stmt = sa.select(cte)
+        sql = _compile(stmt)
+        assert "WITH RECURSIVE" in sql
+        assert "counter" in sql
+
+    def test_non_recursive_cte(self):
+        """Non-recursive WITH should compile without RECURSIVE keyword."""
+        cte = (
+            sa.select(users.c.id, users.c.name)
+            .where(users.c.id > 0)
+            .cte(name="active_users")
+        )
+        stmt = sa.select(cte)
+        sql = _compile(stmt)
+        assert "WITH " in sql
+        assert "RECURSIVE" not in sql
+        assert "active_users" in sql
+
+    def test_cte_with_join(self):
+        """CTE used in a JOIN should compile correctly."""
+        cte = (
+            sa.select(users.c.id, users.c.name)
+            .cte(name="user_cte")
+        )
+        stmt = sa.select(users.c.email, cte.c.name).select_from(
+            users.join(cte, users.c.id == cte.c.id)
+        )
+        sql = _compile(stmt)
+        assert "WITH " in sql
+        assert "user_cte" in sql
+        assert "JOIN" in sql
 
 
 class TestDmlModule:

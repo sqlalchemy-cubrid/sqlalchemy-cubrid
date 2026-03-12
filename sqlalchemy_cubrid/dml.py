@@ -26,7 +26,7 @@ from sqlalchemy.sql.expression import alias
 from sqlalchemy.sql.selectable import NamedFromClause
 from sqlalchemy.util.typing import Self
 
-__all__ = ("Insert", "Merge", "insert", "merge")
+__all__ = ("Insert", "Merge", "Replace", "insert", "merge", "replace")
 
 _UpdateArg = Union[
     Mapping[str, Any],
@@ -92,6 +92,39 @@ class Insert(StandardInsert):
 
         self._post_values_clause = OnDuplicateClause(self.inserted_alias, values)
         return self
+
+
+def replace(table: _DMLTableArgument) -> Replace:
+    """Construct a CUBRID REPLACE INTO statement.
+
+    CUBRID's REPLACE works like MySQL's REPLACE - it inserts a new row,
+    or if a duplicate key violation occurs, deletes the old row and inserts
+    the new one.
+
+    Usage::
+
+        from sqlalchemy_cubrid import replace
+
+        stmt = replace(users).values(id=1, name="updated")
+    """
+    return Replace(table)
+
+
+class Replace(StandardInsert):
+    """CUBRID-specific REPLACE INTO statement.
+
+    Extends StandardInsert to generate REPLACE INTO instead of INSERT INTO.
+    Supports all standard INSERT syntax (values, from_select, etc.)
+    but does NOT support ON DUPLICATE KEY UPDATE (use Insert for that).
+    """
+
+    stringify_dialect = "cubrid"
+    inherit_cache = False
+    __visit_name__ = "replace"
+
+    @property
+    def _effective_plugin_target(self) -> str:
+        return "insert"
 
 
 class OnDuplicateClause(ClauseElement):

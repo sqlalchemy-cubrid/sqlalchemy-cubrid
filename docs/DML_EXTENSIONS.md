@@ -10,8 +10,11 @@ This dialect provides custom SQLAlchemy constructs for CUBRID-specific DML (Data
   - [Basic Usage](#basic-usage)
   - [Referencing Inserted Values](#referencing-inserted-values)
   - [Argument Forms](#argument-forms)
+- [REPLACE INTO](#replace-into)
+  - [Basic Usage](#basic-usage-2)
+  - [Behavior Notes](#behavior-notes)
 - [MERGE Statement](#merge-statement)
-  - [Basic Usage](#basic-usage-1)
+  - [Basic Usage](#basic-usage-3)
   - [MERGE with WHERE Clauses](#merge-with-where-clauses)
   - [MERGE with DELETE WHERE](#merge-with-delete-where)
   - [Builder Methods](#builder-methods)
@@ -22,6 +25,7 @@ This dialect provides custom SQLAlchemy constructs for CUBRID-specific DML (Data
 - [Index Hints](#index-hints)
   - [USING INDEX](#using-index)
   - [USE / FORCE / IGNORE INDEX](#use--force--ignore-index)
+- [Query Trace](#query-trace)
 
 ---
 
@@ -87,6 +91,57 @@ stmt.on_duplicate_key_update([
 ```
 
 > **Note**: You cannot mix keyword arguments with positional arguments (dict/list). Choose one form per call.
+
+### Subquery Values in ON DUPLICATE KEY UPDATE
+
+CUBRID supports using subquery expressions as update values in the ON DUPLICATE KEY UPDATE clause:
+
+```python
+from sqlalchemy_cubrid import insert
+import sqlalchemy as sa
+
+stmt = insert(users).values(id=1, name="alice", email="alice@example.com")
+stmt = stmt.on_duplicate_key_update(
+    name=sa.select(sa.func.max(users.c.name)).scalar_subquery()
+)
+```
+
+**Generated SQL:**
+
+```sql
+INSERT INTO users (id, name, email)
+VALUES (1, 'alice', 'alice@example.com')
+ON DUPLICATE KEY UPDATE name = (SELECT max(users.name) FROM users)
+```
+
+> **Important**: CUBRID does **not** support the `VALUES()` function in ON DUPLICATE KEY UPDATE when used with arbitrary expressions. The `stmt.inserted` reference (which generates `VALUES(column)` syntax) works for simple column references but may not work in all CUBRID versions. For complex update expressions, use subqueries or literal values instead.
+
+---
+
+## REPLACE INTO
+
+CUBRID supports `REPLACE INTO`, which uses INSERT-like syntax and replaces existing rows on duplicate-key conflicts.
+
+### Basic Usage
+
+```python
+from sqlalchemy_cubrid import replace
+
+stmt = replace(users).values(id=1, name="alice", email="alice@example.com")
+```
+
+**Generated SQL:**
+
+```sql
+REPLACE INTO users (id, name, email)
+VALUES (1, 'alice', 'alice@example.com')
+```
+
+### Behavior Notes
+
+- `REPLACE INTO` uses all standard INSERT value patterns (`values`, `from_select`, etc.)
+- On duplicate key conflicts, CUBRID replaces the existing row with the new row
+- `REPLACE INTO` does not support `ON DUPLICATE KEY UPDATE`; use `insert(...).on_duplicate_key_update(...)` for in-place updates
 
 ---
 
@@ -354,6 +409,36 @@ stmt = (
 ```
 
 > **Portability tip**: When using `with_hint(dialect_name="cubrid")`, the hint is only emitted when compiling against the CUBRID dialect. Other dialects will ignore it, making your code safely portable across database backends.
+
+---
+
+## Query Trace
+
+CUBRID does not support the standard SQL `EXPLAIN` statement. Instead, it provides a session-level trace facility via `SET TRACE ON` / `SHOW TRACE` commands.
+
+The `trace_query()` utility wraps this workflow:
+
+```python
+from sqlalchemy import create_engine, text
+from sqlalchemy_cubrid.trace import trace_query
+
+engine = create_engine("cubrid://dba@localhost:33000/demodb")
+with engine.connect() as conn:
+    traces = trace_query(conn, text("SELECT * FROM users WHERE id = 1"))
+    for line in traces:
+        print(line)
+```
+
+**How it works:**
+
+1. `SET TRACE ON` — enables trace collection for the session
+2. Executes the provided SQL statement
+3. `SHOW TRACE` — retrieves trace statistics
+4. `SET TRACE OFF` — disables trace (always, even on error)
+
+**Trace output** includes execution statistics such as query time, fetch count, and I/O operations.
+
+> **Note**: `trace_query()` requires a live CUBRID connection. It cannot be used in offline (compilation-only) mode. The trace is session-scoped and does not affect other connections.
 
 ---
 

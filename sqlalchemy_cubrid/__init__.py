@@ -36,7 +36,8 @@ from .types import (
     STRING,
     VARCHAR,
 )
-from .dml import insert, merge
+from .dml import insert, merge, replace
+from .trace import trace_query
 
 from sqlalchemy.sql.sqltypes import (
     DATE,
@@ -46,11 +47,13 @@ from sqlalchemy.sql.sqltypes import (
     TIMESTAMP,
 )
 
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 
 __all__ = (
     "insert",
     "merge",
+    "replace",
+    "trace_query",
     "SMALLINT",
     "INTEGER",
     "BIGINT",

@@ -63,6 +63,7 @@ High-level overview by feature category.
 | INSERT FROM SELECT | ✅ | ✅ | ✅ | ✅ |
 | ON DUPLICATE KEY UPDATE | ✅ | ✅ | ❌ | ❌ |
 | MERGE statement | ✅ | ❌ | ❌ | ❌ |
+| REPLACE INTO | ✅ | ✅ | ❌ | ✅ |
 | FOR UPDATE (row locking) | ✅ | ✅ | ✅ | ❌ |
 | UPDATE with LIMIT | ✅ | ✅ | ❌ | ❌ |
 | TRUNCATE TABLE | ✅ | ✅ | ✅ | ❌ |
@@ -109,6 +110,7 @@ High-level overview by feature category.
 | Feature | CUBRID | MySQL | PostgreSQL | SQLite |
 |---------|--------|-------|------------|--------|
 | Common Table Expressions (WITH) | ✅ | ✅ | ✅ | ✅ |
+| Recursive CTEs (WITH RECURSIVE) | ✅ | ✅ | ✅ | ✅ |
 | CTEs on DML | ❌ | ❌ | ✅ | ❌ |
 | Window functions | ✅ | ✅ | ✅ | ✅ |
 | NULLS FIRST / NULLS LAST | ✅ | ❌ | ✅ | ✅ |
@@ -117,14 +119,20 @@ High-level overview by feature category.
 | EXCEPT | ✅ | ✅ | ✅ | ✅ |
 | DISTINCT | ✅ | ✅ | ✅ | ✅ |
 | LIMIT / OFFSET | ✅ | ✅ | ✅ | ✅ |
-
+| Lateral joins | ❌ | ❌ | ✅ | ❌ |
+| Full-text search (MATCH … AGAINST) | ❌ | ✅ | ✅ | ✅ |
+| Query trace / EXPLAIN | ⚠️ | ✅ | ✅ | ✅ |
 ### Notes
 
-- **CTEs**: CUBRID 11.0 supports `WITH` clauses for read queries. Writable CTEs (`WITH … INSERT/UPDATE/DELETE`) are not supported.
+- **CTEs**: CUBRID 11.0+ supports `WITH` clauses for read queries. Writable CTEs (`WITH … INSERT/UPDATE/DELETE`) are not supported.
+- **Recursive CTEs**: CUBRID 11.x+ supports `WITH RECURSIVE` for recursive queries. SQLAlchemy's base compiler generates correct syntax — no dialect-specific compilation needed.
 - **Window functions**: CUBRID supports `ROW_NUMBER()`, `RANK()`, `DENSE_RANK()`, and other window functions with `OVER(PARTITION BY … ORDER BY …)`. The SA base compiler handles these natively.
 - **NULLS FIRST / NULLS LAST**: CUBRID supports `ORDER BY col ASC NULLS FIRST` and `ORDER BY col DESC NULLS LAST`. The SA base compiler handles these natively.
 - **GROUP_CONCAT**: CUBRID supports `GROUP_CONCAT([DISTINCT] expr [ORDER BY …] [SEPARATOR '…'])`. Use `sa.func.group_concat(column)`.
 - **LIMIT / OFFSET**: CUBRID uses MySQL-style `LIMIT [offset,] count` syntax. When only an offset is given, the dialect emits `LIMIT offset, 1073741823` (max int) as a workaround.
+- **Lateral joins**: CUBRID does not support `LATERAL` subqueries. The `LATERAL` keyword causes a syntax error.
+- **Full-text search**: CUBRID does not support `MATCH … AGAINST` syntax or full-text indexes.
+- **Query trace**: CUBRID uses `SET TRACE ON` / `SHOW TRACE` instead of standard `EXPLAIN`. The dialect provides `trace_query()` as a utility function — see [CUBRID-Specific DML Constructs](#cubrid-specific-dml-constructs).
 
 ---
 
@@ -379,6 +387,33 @@ stmt = sa.select(sa.func.group_concat(users.c.name))
 # SELECT GROUP_CONCAT(users.name) FROM users
 ```
 
+### REPLACE INTO
+
+CUBRID supports `REPLACE INTO` which inserts a new row, or deletes the conflicting row and inserts the new one if a duplicate key is found.
+
+```python
+from sqlalchemy_cubrid import replace
+
+stmt = replace(users).values(id=1, name="alice", email="alice@example.com")
+# REPLACE INTO users (id, name, email) VALUES (1, 'alice', 'alice@example.com')
+```
+
+The `replace()` construct behaves like `insert()` but generates `REPLACE INTO` instead of `INSERT INTO`.
+
+### Query Trace
+
+CUBRID uses `SET TRACE ON` / `SHOW TRACE` instead of standard `EXPLAIN`. The dialect provides a `trace_query()` utility:
+
+```python
+from sqlalchemy_cubrid import trace_query
+
+with engine.connect() as conn:
+    traces = trace_query(conn, text("SELECT * FROM users WHERE id = 1"))
+    for line in traces:
+        print(line)
+```
+
+`trace_query()` handles the full lifecycle: enables tracing, executes your statement, collects trace output, and disables tracing — all within a safe `try/finally` block.
 ---
 
 ## Index Hints
@@ -435,8 +470,11 @@ Features not currently supported that may be added in future releases, depending
 | IS DISTINCT FROM | ❌ | Not a CUBRID SQL operator |
 | Check constraint reflection | ❌ | CUBRID parses but ignores CHECK constraints |
 | Sequences | ❌ | CUBRID uses `AUTO_INCREMENT` instead |
+| Lateral joins | ❌ | `LATERAL` keyword causes syntax error in CUBRID |
+| Full-text search | ❌ | No `MATCH … AGAINST` syntax or full-text indexes |
+| Standard EXPLAIN | ❌ | CUBRID uses `SET TRACE ON` / `SHOW TRACE` instead (supported via `trace_query()`) |
 | Alembic migrations | ✅ | Supported via `CubridImpl` entry-point (`pip install sqlalchemy-cubrid[alembic]`) |
 
 ---
 
-*Last updated: March 2026 · sqlalchemy-cubrid v1.2.2 · SQLAlchemy 2.0+*
+*Last updated: March 2026 · sqlalchemy-cubrid v1.4.0 · SQLAlchemy 2.0+*

@@ -11,7 +11,7 @@ Alembic migration support, and PEP 561 typing.
 - **Language**: Python 3.10+
 - **Framework**: SQLAlchemy 2.0 – 2.1
 - **License**: MIT
-- **Version**: 1.2.2
+- **Version**: 1.4.0
 
 ## Architecture
 
@@ -143,9 +143,9 @@ test/
 
 ### Test Stats
 
-- **314 tests**, **99% coverage** (968 statements, 3 unreachable)
+- **379 offline tests + 29 integration tests**, **99% coverage** (1034 statements, 6 unreachable)
 - Coverage threshold: 95% (CI-enforced)
-- 3 unreachable lines (defensive fallbacks): `compiler.py:72`, `compiler.py:84`, `dml.py:259`
+- 6 unreachable lines (defensive fallbacks): `compiler.py:72`, `compiler.py:84`, `compiler.py:298-300`, `dml.py:292`
 
 ### Running Tests
 

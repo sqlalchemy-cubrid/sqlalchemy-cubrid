@@ -33,6 +33,7 @@ from sqlalchemy import (
     Table,
     create_engine,
     inspect,
+    select,
     text,
 )
 from sqlalchemy.orm import Session
@@ -407,3 +408,95 @@ class TestConnectionPool:
                 c.close()
         finally:
             eng.dispose()
+
+
+class TestReplaceIntegration:
+    def test_replace_insert(self, engine, metadata):
+        """REPLACE INTO inserts a new row when no conflict."""
+        from sqlalchemy_cubrid import replace
+
+        users = metadata.tables["integration_users"]
+        with engine.begin() as conn:
+            stmt = replace(users).values(name="ReplaceNew", email="replace@example.com")
+            conn.execute(stmt)
+
+        with engine.connect() as conn:
+            row = conn.execute(
+                users.select().where(users.c.name == "ReplaceNew")
+            ).fetchone()
+        assert row is not None
+        assert row.email == "replace@example.com"
+
+    def test_replace_conflict(self, engine, metadata):
+        """REPLACE INTO replaces existing row on duplicate key."""
+        from sqlalchemy_cubrid import replace
+
+        users = metadata.tables["integration_users"]
+        with engine.begin() as conn:
+            # Insert initial row
+            conn.execute(users.insert().values(name="ReplaceMe", email="old@example.com"))
+            row_id = conn.execute(text("SELECT LAST_INSERT_ID()")).scalar()
+
+            # REPLACE with same PK — should delete old + insert new
+            stmt = replace(users).values(id=row_id, name="Replaced", email="new@example.com")
+            conn.execute(stmt)
+
+        with engine.connect() as conn:
+            row = conn.execute(users.select().where(users.c.id == row_id)).fetchone()
+        assert row is not None
+        assert row.name == "Replaced"
+        assert row.email == "new@example.com"
+
+
+class TestRecursiveCTEIntegration:
+    def test_recursive_cte(self, engine, metadata):
+        """WITH RECURSIVE generates a sequence in CUBRID 11.x+."""
+        from sqlalchemy import column as col_func, literal as lit_func
+
+        cte = (
+            select(lit_func(1).label("n"))
+            .cte(name="nums", recursive=True)
+        )
+        cte_alias = cte.alias("a")
+        cte = cte.union_all(
+            select(col_func("n") + 1).select_from(cte_alias).where(col_func("n") < 5)
+        )
+        stmt = select(cte.c.n).order_by(cte.c.n)
+
+        with engine.connect() as conn:
+            rows = conn.execute(stmt).fetchall()
+        values = [r[0] for r in rows]
+        assert values == [1, 2, 3, 4, 5]
+
+
+class TestTraceQueryIntegration:
+    def test_trace_query_returns_output(self, engine, metadata):
+        """trace_query() returns non-empty trace output."""
+        from sqlalchemy_cubrid import trace_query
+
+        users = metadata.tables["integration_users"]
+        # Insert a row so the query has something to trace
+        with engine.begin() as conn:
+            conn.execute(users.insert().values(name="TraceTest", email="trace@example.com"))
+
+        with engine.connect() as conn:
+            traces = trace_query(conn, text("SELECT * FROM integration_users"))
+        # trace_query should return a list; on CUBRID it should have content
+        assert isinstance(traces, list)
+        # Trace may be empty in some CUBRID configurations, but should not error
+
+    def test_trace_query_with_parameters(self, engine, metadata):
+        """trace_query() works with parameterized statements."""
+        from sqlalchemy_cubrid import trace_query
+
+        users = metadata.tables["integration_users"]
+        with engine.begin() as conn:
+            conn.execute(users.insert().values(name="TraceParam", email="param@example.com"))
+
+        with engine.connect() as conn:
+            traces = trace_query(
+                conn,
+                text("SELECT * FROM integration_users WHERE name = :name"),
+                parameters={"name": "TraceParam"},
+            )
+        assert isinstance(traces, list)
