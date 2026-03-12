@@ -22,21 +22,28 @@ production-ready SQLAlchemy dialect that supports the modern 2.0 API.
 **sqlalchemy-cubrid** bridges that gap:
 
 - Full SQLAlchemy 2.0 dialect with **statement caching** and **PEP 561 typing**
-- **396 offline tests** with **99.45% code coverage** — no database required to run them
+- **426 offline tests** with **99%+ code coverage** — no database required to run them
 - Tested against **4 CUBRID versions** (10.2, 11.0, 11.2, 11.4) across **Python 3.10 -- 3.13**
 - CUBRID-specific DML constructs: `ON DUPLICATE KEY UPDATE`, `MERGE`, `REPLACE INTO`
 - Alembic migration support out of the box
+- **Two driver options** — C-extension (`cubrid://`) or pure Python (`cubrid+pycubrid://`)
 
 ## Requirements
 
 - Python 3.10+
-- SQLAlchemy 2.0 -- 2.1
-- [CUBRID-Python](https://github.com/CUBRID/cubrid-python) driver
+- SQLAlchemy 2.0 – 2.1
+- [CUBRID-Python](https://github.com/CUBRID/cubrid-python) (C-extension) **or** [pycubrid](https://github.com/sqlalchemy-cubrid/pycubrid) (pure Python)
 
 ## Installation
 
 ```bash
 pip install sqlalchemy-cubrid
+```
+
+With the pure Python driver (no C build needed):
+
+```bash
+pip install "sqlalchemy-cubrid[pycubrid]"
 ```
 
 With Alembic support:

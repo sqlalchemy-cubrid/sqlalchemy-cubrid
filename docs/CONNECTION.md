@@ -49,6 +49,28 @@ pip install CUBRID-Python
 > [CUBRID Python driver documentation](https://www.cubrid.org/manual/en/11.0/api/python.html)
 > for platform-specific instructions.
 
+### Alternative: Pure Python Driver (pycubrid)
+
+If you prefer a pure Python driver with no C build dependencies:
+
+```bash
+pip install "sqlalchemy-cubrid[pycubrid]"
+```
+
+Or install separately:
+
+```bash
+pip install sqlalchemy-cubrid pycubrid
+```
+
+Then use the `cubrid+pycubrid://` URL scheme:
+
+```python
+engine = create_engine("cubrid+pycubrid://dba@localhost:33000/testdb")
+```
+
+> **Tip**: `pycubrid` is a pure Python implementation — it works anywhere Python runs,
+> with no native library dependencies. See [pycubrid on GitHub](https://github.com/sqlalchemy-cubrid/pycubrid).
 ---
 
 ## Connection String Format
@@ -70,8 +92,11 @@ engine = create_engine("cubrid://dba:password@localhost:33000/demodb")
 # Without password (CUBRID allows passwordless dba access by default)
 engine = create_engine("cubrid://dba@localhost:33000/testdb")
 
-# With explicit driver name
+# With explicit driver name (C-extension)
 engine = create_engine("cubrid+cubrid://dba:password@localhost:33000/demodb")
+
+# Using pycubrid pure Python driver
+engine = create_engine("cubrid+pycubrid://dba:password@localhost:33000/demodb")
 ```
 
 ### URL Components
@@ -88,15 +113,15 @@ engine = create_engine("cubrid+cubrid://dba:password@localhost:33000/demodb")
 
 ## Entry Points
 
-The dialect registers two SQLAlchemy entry points:
+The dialect registers three SQLAlchemy entry points:
 
-| URL Scheme        | Description                  |
-|-------------------|------------------------------|
-| `cubrid://`       | Default (recommended)        |
-| `cubrid+cubrid://`| Explicit driver specification |
+| URL Scheme           | Driver      | Description                          |
+|----------------------|-------------|--------------------------------------|
+| `cubrid://`          | CUBRIDdb    | Default C-extension driver           |
+| `cubrid+cubrid://`   | CUBRIDdb    | Explicit C-extension driver          |
+| `cubrid+pycubrid://` | pycubrid    | Pure Python driver (no C build)      |
 
-Both point to the same `CubridDialect` class. Use `cubrid://` unless you have a specific reason to be explicit.
-
+Use `cubrid://` for the C-extension driver (best performance), or `cubrid+pycubrid://` for the pure Python driver (easiest installation, no native build step).
 ---
 
 ## How the Dialect Translates URLs
@@ -114,13 +139,23 @@ The `create_connect_args()` method returns `(connect_url, username, password)` a
 ### Translation Details
 
 ```python
-# What the dialect does internally:
+# CUBRIDdb (C-extension driver):
 connect_url = f"CUBRID:{host}:{port}:{database}:::"
 args = (connect_url, username, password)
 # → CUBRIDdb.connect("CUBRID:myhost:33000:mydb:::", "dba", "password")
 ```
 
 The trailing `:::` in the CUBRID connection string represents three empty optional parameters (reserved for future use by CUBRID).
+
+### pycubrid Translation
+
+The pycubrid dialect passes keyword arguments directly:
+
+```python
+# pycubrid (pure Python driver):
+kwargs = {"host": host, "port": port, "database": database, "user": user, "password": password}
+# → pycubrid.connect(host="myhost", port=33000, database="mydb", user="dba", password="password")
+```
 
 ---
 
@@ -163,7 +198,7 @@ See [Isolation Levels](ISOLATION_LEVELS.md) for all supported levels.
 
 ### Driver Default vs. Dialect Override
 
-The CUBRID Python driver defaults to `autocommit=True`. The dialect overrides this by calling `conn.set_autocommit(False)` on every new connection, so that SQLAlchemy can manage transactions properly.
+Both CUBRID Python drivers default to `autocommit=True`. The dialect overrides this on every new connection so that SQLAlchemy can manage transactions properly. CUBRIDdb uses `conn.set_autocommit(False)`; pycubrid uses the property setter `conn.autocommit = False`.
 
 ### DDL Autocommit Detection
 
@@ -286,7 +321,7 @@ engine = create_engine(
 
 ### `pool_pre_ping` (Recommended)
 
-When `pool_pre_ping=True`, SQLAlchemy calls `do_ping()` on each connection before handing it to your application. The CUBRID dialect uses the native `connection.ping()` method from the CUBRID Python driver, which sends a lightweight CCI-level ping to the broker.
+When `pool_pre_ping=True`, SQLAlchemy calls `do_ping()` on each connection before handing it to your application. The CUBRIDdb dialect uses the native `connection.ping()` method from the CUBRID Python driver. The pycubrid dialect executes `SELECT 1` since pycubrid has no native `ping()` method. Both approaches prevent "stale connection" errors.
 
 This prevents "stale connection" errors that occur when:
 - The CUBRID broker restarts

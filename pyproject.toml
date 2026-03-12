@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sqlalchemy-cubrid"
-version = "2.0.0"
+version = "2.1.0"
 description = "CUBRID dialect for SQLAlchemy"
 readme = "README.md"
 license = "MIT"
@@ -41,6 +41,9 @@ dev = [
 alembic = [
     "alembic>=1.7",
 ]
+pycubrid = [
+    "pycubrid",
+]
 
 [project.urls]
 Homepage = "https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid"
@@ -50,6 +53,7 @@ Documentation = "https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid/tree/mai
 [project.entry-points."sqlalchemy.dialects"]
 cubrid = "sqlalchemy_cubrid.dialect:CubridDialect"
 "cubrid.cubrid" = "sqlalchemy_cubrid.dialect:CubridDialect"
+"cubrid.pycubrid" = "sqlalchemy_cubrid.pycubrid_dialect:PyCubridDialect"
 
 [project.entry-points."alembic.ddl"]
 cubrid = "sqlalchemy_cubrid.alembic_impl:CubridImpl"

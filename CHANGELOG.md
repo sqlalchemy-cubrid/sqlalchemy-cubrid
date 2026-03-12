@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-03-12
+
+### Added
+- **pycubrid dialect variant**: New `PyCubridDialect` class (`cubrid+pycubrid://` URL scheme)
+  for using the [pycubrid](https://github.com/sqlalchemy-cubrid/pycubrid) pure Python DB-API 2.0
+  driver. Subclasses `CubridDialect` — inherits all SQL compilation, type mapping, and schema
+  reflection. Overrides only driver-specific methods: `import_dbapi()`, `create_connect_args()`,
+  `on_connect()`, `do_ping()`.
+- **`PyCubridExecutionContext`**: Execution context that uses pycubrid's native `cursor.lastrowid`
+  (returns `int | None` directly) with SQL `LAST_INSERT_ID()` fallback.
+- **`cubrid.pycubrid` entry point**: Registered in `pyproject.toml` so SQLAlchemy auto-discovers
+  the pycubrid dialect via `create_engine("cubrid+pycubrid://...")`.
+- **`pycubrid` optional dependency**: `pip install "sqlalchemy-cubrid[pycubrid]"` installs pycubrid.
+- **30 new offline tests**: `test/test_pycubrid_dialect.py` covering driver basics, connect args,
+  on_connect, do_ping, execution context, entry point registration, isolation levels, and
+  misc methods.
+- **Documentation**: Updated `docs/CONNECTION.md` and `README.md` with pycubrid driver information.
+
+### Changed
+- Version bumped to 2.1.0.
+
+
 ## [2.0.0] - 2026-03-12
 
 ### Added

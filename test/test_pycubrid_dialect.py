@@ -1,0 +1,299 @@
+from __future__ import annotations
+
+import sys
+import types
+from typing import Any, cast
+from unittest.mock import MagicMock, patch
+
+import pytest
+from sqlalchemy.engine import url
+
+from sqlalchemy_cubrid.pycubrid_dialect import PyCubridDialect, PyCubridExecutionContext
+
+
+class TestPyCubridDialectBasics:
+    def test_driver_name(self):
+        dialect = PyCubridDialect()
+        assert dialect.driver == "pycubrid"
+        assert dialect.name == "cubrid"
+
+    def test_supports_statement_cache(self):
+        dialect = PyCubridDialect()
+        assert dialect.supports_statement_cache is True
+
+    def test_default_paramstyle(self):
+        dialect = PyCubridDialect()
+        assert dialect.default_paramstyle == "qmark"
+
+    def test_execution_context_class(self):
+        dialect = PyCubridDialect()
+        assert dialect.execution_ctx_cls is PyCubridExecutionContext
+
+    def test_inherits_cubrid_dialect_properties(self):
+        dialect = PyCubridDialect()
+        assert dialect.supports_native_boolean is False
+        assert dialect.supports_sequences is False
+        assert dialect.max_identifier_length == 254
+        assert dialect.insert_returning is False
+        assert dialect.postfetch_lastrowid is True
+
+    def test_init_with_and_without_isolation_level(self):
+        default_dialect = PyCubridDialect()
+        assert default_dialect.isolation_level is None
+
+        custom_dialect = PyCubridDialect(isolation_level="SERIALIZABLE")
+        assert custom_dialect.isolation_level == "SERIALIZABLE"
+
+    def test_import_dbapi_success(self):
+        fake_module = types.ModuleType("pycubrid")
+        with patch.dict(sys.modules, {"pycubrid": fake_module}):
+            imported = PyCubridDialect.import_dbapi()
+        assert imported is fake_module
+
+    def test_import_dbapi_import_error(self):
+        import builtins
+
+        real_import = builtins.__import__
+
+        def _fake_import(name, *args, **kwargs):
+            if name == "pycubrid":
+                raise ImportError("pycubrid not installed")
+            return real_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=_fake_import):
+            with pytest.raises(ImportError, match="pycubrid not installed"):
+                PyCubridDialect.import_dbapi()
+
+    def test_legacy_dbapi_method_calls_import_dbapi(self):
+        fake_module = object()
+        with patch.object(PyCubridDialect, "import_dbapi", return_value=fake_module) as mocked:
+            assert PyCubridDialect.dbapi() is fake_module
+        mocked.assert_called_once_with()
+
+
+class TestPyCubridConnectArgs:
+    def test_create_connect_args_full_url(self):
+        dialect = PyCubridDialect()
+        parsed = url.make_url("cubrid+pycubrid://dba:pw@dbhost:33001/demodb")
+
+        args, kwargs = dialect.create_connect_args(parsed)
+
+        assert args == ()
+        assert kwargs == {
+            "host": "dbhost",
+            "port": 33001,
+            "database": "demodb",
+            "user": "dba",
+            "password": "pw",
+        }
+
+    def test_create_connect_args_defaults(self):
+        dialect = PyCubridDialect()
+        parsed = url.make_url("cubrid+pycubrid://")
+
+        args, kwargs = dialect.create_connect_args(parsed)
+
+        assert args == ()
+        assert kwargs == {
+            "host": "localhost",
+            "port": 33000,
+            "database": "",
+            "user": "dba",
+            "password": "",
+        }
+
+    def test_create_connect_args_partial_url(self):
+        dialect = PyCubridDialect()
+        parsed = url.make_url("cubrid+pycubrid://myuser@myhost/mydb")
+
+        args, kwargs = dialect.create_connect_args(parsed)
+
+        assert kwargs["host"] == "myhost"
+        assert kwargs["database"] == "mydb"
+        assert kwargs["user"] == "myuser"
+        assert kwargs["password"] == ""
+        assert kwargs["port"] == 33000
+
+    def test_create_connect_args_none_url_raises(self):
+        dialect = PyCubridDialect()
+        none_url = cast(Any, None)
+        with pytest.raises(ValueError, match="Unexpected database URL format"):
+            dialect.create_connect_args(none_url)
+
+
+class TestPyCubridOnConnect:
+    def test_on_connect_without_isolation_level(self):
+        dialect = PyCubridDialect()
+        dialect.set_isolation_level = MagicMock()
+
+        dbapi_conn = MagicMock()
+        hook = dialect.on_connect()
+        hook(dbapi_conn)
+
+        # pycubrid uses property setter, not set_autocommit()
+        assert dbapi_conn.autocommit is False
+        dialect.set_isolation_level.assert_not_called()
+
+    def test_on_connect_with_isolation_level(self):
+        dialect = PyCubridDialect(isolation_level="SERIALIZABLE")
+        dialect.set_isolation_level = MagicMock()
+
+        dbapi_conn = MagicMock()
+        hook = dialect.on_connect()
+        hook(dbapi_conn)
+
+        assert dbapi_conn.autocommit is False
+        dialect.set_isolation_level.assert_called_once_with(dbapi_conn, "SERIALIZABLE")
+
+
+class TestPyCubridDoPing:
+    def test_do_ping_success(self):
+        dialect = PyCubridDialect()
+        dbapi_conn = MagicMock()
+        cursor = MagicMock()
+        cursor.fetchone.return_value = (1,)
+        dbapi_conn.cursor.return_value = cursor
+
+        result = dialect.do_ping(dbapi_conn)
+
+        assert result is True
+        cursor.execute.assert_called_once_with("SELECT 1")
+        cursor.fetchone.assert_called_once()
+        cursor.close.assert_called_once()
+
+    def test_do_ping_always_closes_cursor(self):
+        dialect = PyCubridDialect()
+        dbapi_conn = MagicMock()
+        cursor = MagicMock()
+        cursor.execute.side_effect = RuntimeError("connection lost")
+        dbapi_conn.cursor.return_value = cursor
+
+        with pytest.raises(RuntimeError, match="connection lost"):
+            dialect.do_ping(dbapi_conn)
+
+        cursor.close.assert_called_once()
+
+
+class TestPyCubridExecutionContext:
+    def test_get_lastrowid_from_cursor(self):
+        ctx = PyCubridExecutionContext.__new__(PyCubridExecutionContext)
+        mock_cursor = MagicMock()
+        mock_cursor.lastrowid = 42
+        ctx.cursor = mock_cursor
+
+        assert ctx.get_lastrowid() == 42
+
+    def test_get_lastrowid_none(self):
+        ctx = PyCubridExecutionContext.__new__(PyCubridExecutionContext)
+        mock_cursor = MagicMock()
+        mock_cursor.lastrowid = None
+        ctx.cursor = mock_cursor
+
+        assert ctx.get_lastrowid() is None
+
+    def test_get_lastrowid_fallback_on_attribute_error(self):
+        ctx = PyCubridExecutionContext.__new__(PyCubridExecutionContext)
+        # Cursor without lastrowid attribute
+        ctx.cursor = object()
+
+        mock_server_cursor = MagicMock()
+        mock_server_cursor.fetchone.return_value = (99,)
+        ctx.create_server_side_cursor = MagicMock(return_value=mock_server_cursor)
+
+        result = ctx.get_lastrowid()
+
+        assert result == 99
+        mock_server_cursor.execute.assert_called_once_with("SELECT LAST_INSERT_ID()")
+        mock_server_cursor.close.assert_called_once()
+
+    def test_get_lastrowid_fallback_returns_none_when_no_rows(self):
+        ctx = PyCubridExecutionContext.__new__(PyCubridExecutionContext)
+        ctx.cursor = object()
+
+        mock_server_cursor = MagicMock()
+        mock_server_cursor.fetchone.return_value = None
+        ctx.create_server_side_cursor = MagicMock(return_value=mock_server_cursor)
+
+        result = ctx.get_lastrowid()
+
+        assert result is None
+        mock_server_cursor.close.assert_called_once()
+
+
+class TestPyCubridEntryPointRegistration:
+    def test_dialect_module_attribute(self):
+        from sqlalchemy_cubrid import pycubrid_dialect
+
+        assert pycubrid_dialect.dialect is PyCubridDialect
+
+    def test_create_engine_url_format(self):
+        """Verify the dialect parses cubrid+pycubrid:// URLs correctly."""
+        parsed = url.make_url("cubrid+pycubrid://dba:secret@myserver:33000/testdb")
+        assert parsed.drivername == "cubrid+pycubrid"
+        assert parsed.host == "myserver"
+        assert parsed.port == 33000
+        assert parsed.database == "testdb"
+        assert parsed.username == "dba"
+        assert parsed.password == "secret"
+
+
+class TestPyCubridIsolationLevels:
+    """Verify that PyCubridDialect inherits isolation level handling."""
+
+    def test_isolation_level_values(self):
+        dialect = PyCubridDialect()
+        values = dialect.get_isolation_level_values()
+        assert "SERIALIZABLE" in values
+        assert "READ COMMITTED" in values
+
+    def test_set_isolation_level(self):
+        dialect = PyCubridDialect()
+        dbapi_conn = MagicMock()
+        cursor = MagicMock()
+        dbapi_conn.cursor.return_value = cursor
+
+        dialect.set_isolation_level(dbapi_conn, "SERIALIZABLE")
+
+        cursor.execute.assert_any_call("SET TRANSACTION ISOLATION LEVEL 6")
+        cursor.execute.assert_any_call("COMMIT")
+        cursor.close.assert_called_once()
+
+    def test_set_isolation_level_invalid_raises(self):
+        dialect = PyCubridDialect()
+        dbapi_conn = MagicMock()
+
+        with pytest.raises(ValueError, match="Invalid isolation level"):
+            dialect.set_isolation_level(dbapi_conn, "INVALID_LEVEL")
+
+    def test_get_isolation_level_numeric(self):
+        dialect = PyCubridDialect()
+        cursor = MagicMock()
+        cursor.fetchone.return_value = (6,)
+        dbapi_conn = MagicMock()
+        dbapi_conn.cursor.return_value = cursor
+
+        level = dialect.get_isolation_level(dbapi_conn)
+        assert level == "SERIALIZABLE"
+
+    def test_reset_isolation_level(self):
+        dialect = PyCubridDialect()
+        dbapi_conn = MagicMock()
+        cursor = MagicMock()
+        dbapi_conn.cursor.return_value = cursor
+
+        dialect.reset_isolation_level(dbapi_conn)
+
+        cursor.execute.assert_any_call("SET TRANSACTION ISOLATION LEVEL 4")
+
+
+class TestPyCubridDoReleaseAndMiscMethods:
+    def test_do_release_savepoint_is_noop(self):
+        dialect = PyCubridDialect()
+        conn = MagicMock()
+        # Should not raise
+        dialect.do_release_savepoint(conn, "sp1")
+
+    def test_has_sequence_always_false(self):
+        dialect = PyCubridDialect()
+        conn = MagicMock()
+        assert dialect.has_sequence(conn, "myseq") is False

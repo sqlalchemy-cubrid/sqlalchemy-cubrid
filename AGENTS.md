@@ -11,16 +11,17 @@ Alembic migration support, and PEP 561 typing.
 - **Language**: Python 3.10+
 - **Framework**: SQLAlchemy 2.0 – 2.1
 - **License**: MIT
-- **Version**: 2.0.0
+- **Version**: 2.1.0
 
 ## Architecture
 
 ```
-sqlalchemy_cubrid/          # Main package (8 modules)
+sqlalchemy_cubrid/          # Main package (9 modules)
 ├── __init__.py             # Public API — exports types, insert(), merge(), __version__
 ├── base.py                 # CubridExecutionContext, CubridIdentifierPreparer
 ├── compiler.py             # CubridSQLCompiler, CubridDDLCompiler, CubridTypeCompiler
 ├── dialect.py              # CubridDialect — reflection, connection, isolation levels
+├── pycubrid_dialect.py     # PyCubridDialect — pure Python driver variant
 ├── dml.py                  # ON DUPLICATE KEY UPDATE (Insert), MERGE statement
 ├── types.py                # CUBRID type system — numeric, string, LOB, collection
 ├── requirements.py         # SA 2.0 test requirement flags (40+ properties)
@@ -33,6 +34,7 @@ sqlalchemy_cubrid/          # Main package (8 modules)
 | Module | Role |
 |---|---|
 | `dialect.py` | Main dialect class. Handles `create_connect_args`, reflection (`get_columns`, `get_pk_constraint`, `get_foreign_keys`, `get_indexes`, `get_table_comment`, etc.), isolation levels, `import_dbapi()`. |
+| `pycubrid_dialect.py` | `PyCubridDialect` — subclasses `CubridDialect` for the pycubrid pure Python driver. Overrides `import_dbapi()`, `create_connect_args()`, `on_connect()`, `do_ping()`. |
 | `compiler.py` | SQL compilation. `visit_cast`, `limit_clause`, `for_update_clause`, `update_limit_clause`, DDL (`get_column_specification`, `AUTO_INCREMENT`, `COMMENT`), type compilation for all CUBRID types. |
 | `dml.py` | Custom DML constructs: `insert()` with `.on_duplicate_key_update()`, `merge()` with `.using()`, `.on()`, `.when_matched_then_update()`, `.when_not_matched_then_insert()`. |
 | `types.py` | Type classes: `STRING`, `BIT`, `CLOB`, `SET`, `MULTISET`, `SEQUENCE`, `MONETARY`, `OBJECT`, plus standard type overrides. |
@@ -46,7 +48,7 @@ sqlalchemy_cubrid/          # Main package (8 modules)
 [project.entry-points."sqlalchemy.dialects"]
 cubrid = "sqlalchemy_cubrid.dialect:CubridDialect"
 "cubrid.cubrid" = "sqlalchemy_cubrid.dialect:CubridDialect"
-
+"cubrid.pycubrid" = "sqlalchemy_cubrid.pycubrid_dialect:PyCubridDialect"
 [project.entry-points."alembic.ddl"]
 cubrid = "sqlalchemy_cubrid.alembic_impl:CubridImpl"
 ```
@@ -137,13 +139,14 @@ test/
 ├── test_dml.py              # ON DUPLICATE KEY UPDATE, MERGE compilation
 ├── test_alembic.py          # Alembic CubridImpl import/registry
 ├── test_dialects.py         # Edge cases
+├── test_pycubrid_dialect.py # PyCubridDialect (pure Python driver variant)
 ├── test_integration.py      # Live DB tests (skipped offline)
 └── test_suite.py            # SA test suite runner (skipped offline)
 ```
 
 ### Test Stats
 
-- **396 offline tests + 29 integration tests**, **99.45% coverage** (1082 statements, 6 unreachable)
+- **426 offline tests + 29 integration tests**, **99.47% coverage** (1134 statements, 6 unreachable)
 - Coverage threshold: 95% (CI-enforced)
 - 6 unreachable lines (defensive fallbacks): `compiler.py:72`, `compiler.py:84`, `compiler.py:298-300`, `dml.py:310`
 
