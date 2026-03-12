@@ -435,8 +435,8 @@ Features not currently supported that may be added in future releases, depending
 | IS DISTINCT FROM | ❌ | Not a CUBRID SQL operator |
 | Check constraint reflection | ❌ | CUBRID parses but ignores CHECK constraints |
 | Sequences | ❌ | CUBRID uses `AUTO_INCREMENT` instead |
-| Alembic migrations | ❌ | Not yet implemented |
+| Alembic migrations | ✅ | Supported via `CubridImpl` entry-point (`pip install sqlalchemy-cubrid[alembic]`) |
 
 ---
 
-*Last updated: March 2026 · sqlalchemy-cubrid v1.1.0 · SQLAlchemy 2.0+*
+*Last updated: March 2026 · sqlalchemy-cubrid v1.2.0 · SQLAlchemy 2.0+*

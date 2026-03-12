@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-12
+
+### Added
+- Alembic migration support via `CubridImpl` (`alembic.ddl` entry-point).
+  Install with `pip install sqlalchemy-cubrid[alembic]`.
+- `test/test_alembic.py`: 8 tests covering import, registry, entry-point, and import-error scenarios.
+
+### Changed
+- Edge-case tests added for compiler.py, dml.py, and dialect.py — coverage raised from 97% to 99% (306 → 314 tests).
+- `docs/FEATURE_SUPPORT.md`: Alembic row updated from ❌ to ✅.
+
 ## [1.1.0] - 2026-03-12
 
 ### Added
