@@ -707,6 +707,33 @@ class TestCommentCompilation:
         assert "new name" in sql
 
 
+
+class TestIfExistsDDL:
+    """Test IF NOT EXISTS / IF EXISTS DDL compilation."""
+
+    def test_create_table_if_not_exists(self):
+        """CREATE TABLE IF NOT EXISTS should compile correctly."""
+        from sqlalchemy.schema import CreateTable
+
+        t = sa.Table(
+            "t", sa.MetaData(),
+            sa.Column("id", sa.Integer, primary_key=True),
+        )
+        compiled = CreateTable(t, if_not_exists=True).compile(dialect=CubridDialect())
+        sql = str(compiled)
+        assert "IF NOT EXISTS" in sql
+
+    def test_drop_table_if_exists(self):
+        """DROP TABLE IF EXISTS should compile correctly."""
+        from sqlalchemy.schema import DropTable
+
+        t = sa.Table(
+            "t", sa.MetaData(),
+            sa.Column("id", sa.Integer, primary_key=True),
+        )
+        compiled = DropTable(t, if_exists=True).compile(dialect=CubridDialect())
+        sql = str(compiled)
+        assert "IF EXISTS" in sql
 class TestUpdateCompilation:
     """Test UPDATE statement compilation with LIMIT and FROM."""
 

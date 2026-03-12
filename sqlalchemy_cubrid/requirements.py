@@ -85,7 +85,8 @@ class Requirements(SuiteRequirements):
 
     @property
     def table_ddl_if_exists(self):
-        return exclusions.closed()
+        """CUBRID supports IF NOT EXISTS / IF EXISTS in DDL."""
+        return exclusions.open()
 
     @property
     def comment_reflection(self):
