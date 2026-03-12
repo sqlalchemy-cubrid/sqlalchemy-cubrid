@@ -1,48 +1,40 @@
-# sample/types.py
-# Copyright (C) 2021-2022 by sqlalchemy-cubrid authors and contributors
+# samples/cubrid_datatypes.py
+# Copyright (C) 2021-2026 by sqlalchemy-cubrid authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-cubrid and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-import os
-from os.path import join, dirname
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
 
+"""Example: create tables with CUBRID-specific data types."""
 
-dotenv_path = join(dirname(__file__), ".env")
-load_dotenv(dotenv_path)
+from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine
 
-USERNAME = os.environ.get("USERNAME")
-PASSWORD = os.environ.get("PASSWORD")
-HOST = os.environ.get("HOST")
-PORT = os.environ.get("PORT")
-DBNAME = os.environ.get("DBNAME")
+from sqlalchemy_cubrid import BIGINT, SET, STRING, VARCHAR
 
-engine = create_engine(
-    f"cubrid+cubrid://{USERNAME}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}"
-)
-
-from sqlalchemy import MetaData, Table, Column, Integer, String
+# Replace with your CUBRID connection details
+engine = create_engine("cubrid://dba:password@localhost:33000/demodb")
 
 metadata = MetaData()
 
-t1 = Table(
-    "table1",
+# Table with standard SQLAlchemy types
+users = Table(
+    "users",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column("data", String),
+    Column("name", String(100)),
 )
 
-t1.create(engine)
-
-from sqlalchemy_cubrid import VARCHAR
-
-t2 = Table(
-    "table2",
+# Table with CUBRID-specific types
+products = Table(
+    "products",
     metadata,
-    Column("id", Integer, primary_key=True),
-    Column("data", VARCHAR),
+    Column("id", BIGINT, primary_key=True),
+    Column("name", VARCHAR(200)),
+    Column("description", STRING),
+    Column("tags", SET(VARCHAR(50))),
 )
 
-t2.create(engine)
+# Create tables (SA 2.0 style)
+metadata.create_all(engine)
+
+engine.dispose()

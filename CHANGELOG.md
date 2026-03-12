@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-03-12
+
+### Fixed
+- README: Fixed lint badge referencing deleted `pre-commit.yml` workflow — now points to `ci.yml`.
+- SECURITY.md: Added v1.1.x and v1.2.x to supported versions table.
+- `docs/source/index.rst`: Replaced Sphinx quickstart boilerplate with proper project documentation.
+- `docs/source/conf.py`: Updated version to 1.2.0, added `viewcode` and `intersphinx` extensions.
+- `docs/source/sqlalchemy_cubrid.rst`: Added `dml` and `alembic_impl` module autodoc sections.
+- `samples/create_engine.py`: Modernized to SA 2.0 API (`text()`, context manager).
+- `samples/cubrid_datatypes.py`: Modernized to SA 2.0 API (`metadata.create_all`, CUBRID types).
+- `samples/env.sample`: Replaced hardcoded external IP with `localhost`.
+
+### Removed
+- Removed legacy files superseded by `pyproject.toml`: `setup.py`, `setup.cfg`, `CHANGES.rst`, `requirements.txt`, `requirements-dev.txt`, `install_cubrid_python.sh`.
+- Removed duplicate `pre-commit.yml` GitHub Actions workflow (functionality covered by `ci.yml`).
 ## [1.2.0] - 2026-03-12
 
 ### Added

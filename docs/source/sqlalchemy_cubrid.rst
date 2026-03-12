@@ -44,6 +44,22 @@ sqlalchemy\_cubrid.types module
    :undoc-members:
    :show-inheritance:
 
+sqlalchemy\_cubrid.dml module
+-----------------------------
+
+.. automodule:: sqlalchemy_cubrid.dml
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+sqlalchemy\_cubrid.alembic\_impl module
+---------------------------------------
+
+.. automodule:: sqlalchemy_cubrid.alembic_impl
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

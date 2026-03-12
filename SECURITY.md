@@ -6,6 +6,8 @@ The following versions of sqlalchemy-cubrid are currently supported for security
 
 | Version | Status |
 |---------|--------|
+| 1.2.x   | ✅ Supported |
+| 1.1.x   | ✅ Supported |
 | 1.0.x   | ✅ Supported |
 | < 1.0   | ❌ Not Supported |
 

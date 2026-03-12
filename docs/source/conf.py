@@ -4,27 +4,32 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../sqlalchemy_cubrid'))
+
+sys.path.insert(0, os.path.abspath("../.."))
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'sqlalchemy_cubrid'
-copyright = '2022, Yeongseon Choe, Gyeongjun Paik'
-author = 'Yeongseon Choe, Gyeongjun Paik'
-release = '0.0.1'
+project = "sqlalchemy_cubrid"
+copyright = "2021-2026, Yeongseon Choe, Gyeongjun Paik"
+author = "Yeongseon Choe, Gyeongjun Paik"
+release = "1.2.1"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc']
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.viewcode", "sphinx.ext.intersphinx"]
 
-templates_path = ['_templates']
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "sqlalchemy": ("https://docs.sqlalchemy.org/en/20/", None),
+}
+
+templates_path = ["_templates"]
 exclude_patterns = []
-
-
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+html_theme = "sphinx_rtd_theme"
+html_static_path = ["_static"]

@@ -1,34 +1,20 @@
-# sample/create_engine.py
-# Copyright (C) 2021-2022 by sqlalchemy-cubrid authors and contributors
+# samples/create_engine.py
+# Copyright (C) 2021-2026 by sqlalchemy-cubrid authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-cubrid and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-import os
-from os.path import join, dirname
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
 
+"""Basic example: create an engine and execute a query."""
 
-dotenv_path = join(dirname(__file__), ".env")
-load_dotenv(dotenv_path)
+from sqlalchemy import create_engine, text
 
-USERNAME = os.environ.get("USERNAME")
-PASSWORD = os.environ.get("PASSWORD")
-HOST = os.environ.get("HOST")
-PORT = os.environ.get("PORT")
-DBNAME = os.environ.get("DBNAME")
+# Replace with your CUBRID connection details
+engine = create_engine("cubrid://dba:password@localhost:33000/demodb")
 
-engine = create_engine(
-    f"cubrid+cubrid://{USERNAME}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}"
-)
-connection = engine.connect()
-
-try:
-    result = connection.execute("select * from test_cubrid")
-
+with engine.connect() as conn:
+    result = conn.execute(text("SELECT 1 + 1 AS answer"))
     for row in result:
         print(row)
-finally:
-    connection.close()
-    engine.dispose()
+
+engine.dispose()
