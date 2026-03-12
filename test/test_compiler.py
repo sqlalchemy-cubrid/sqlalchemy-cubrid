@@ -113,6 +113,57 @@ class TestInsertCompilation:
         assert "users" in sql
 
 
+class TestWindowFunctionCompilation:
+    """Test window function compilation."""
+
+    def test_row_number(self):
+        """ROW_NUMBER() OVER (ORDER BY ...) should compile."""
+        stmt = select(
+            users.c.name,
+            sa.func.row_number().over(order_by=users.c.id).label("rn"),
+        )
+        sql = _compile(stmt)
+        assert "row_number()" in sql.lower()
+        assert "OVER" in sql
+        assert "ORDER BY" in sql
+
+    def test_rank_with_partition(self):
+        """RANK() OVER (PARTITION BY ... ORDER BY ...) should compile."""
+        stmt = select(
+            users.c.name,
+            sa.func.rank().over(
+                partition_by=users.c.email,
+                order_by=users.c.id,
+            ).label("rnk"),
+        )
+        sql = _compile(stmt)
+        assert "rank()" in sql.lower()
+        assert "PARTITION BY" in sql
+
+    def test_dense_rank(self):
+        """DENSE_RANK should compile via SA base compiler."""
+        stmt = select(
+            sa.func.dense_rank().over(order_by=users.c.id).label("dr"),
+        )
+        sql = _compile(stmt)
+        assert "dense_rank()" in sql.lower()
+        assert "OVER" in sql
+
+
+class TestNullsOrderCompilation:
+    """Test NULLS FIRST / NULLS LAST in ORDER BY."""
+
+    def test_nulls_first(self):
+        stmt = select(users).order_by(users.c.name.asc().nulls_first())
+        sql = _compile(stmt)
+        assert "NULLS FIRST" in sql
+
+    def test_nulls_last(self):
+        stmt = select(users).order_by(users.c.name.desc().nulls_last())
+        sql = _compile(stmt)
+        assert "NULLS LAST" in sql
+
+
 class TestJoinCompilation:
     orders = Table(
         "orders",

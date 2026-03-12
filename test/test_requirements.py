@@ -68,7 +68,7 @@ class TestRequirements:
     @pytest.mark.parametrize(
         "property_name, expected_open",
         [
-            ("window_functions", False),
+            ("window_functions", True),
             ("intersect", True),
             ("except_", True),
             ("fetch_no_order", True),

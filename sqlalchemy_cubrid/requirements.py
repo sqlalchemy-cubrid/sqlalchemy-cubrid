@@ -120,7 +120,8 @@ class Requirements(SuiteRequirements):
 
     @property
     def window_functions(self):
-        return exclusions.closed()
+        """CUBRID supports window functions (ROW_NUMBER, RANK, etc.) with OVER()."""
+        return exclusions.open()
 
     @property
     def intersect(self):
