@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-03-13
+
+### Fixed
+- **`visit_utc_timestamp_func`**: Compile `func.utc_timestamp()` to `UTC_TIMESTAMP()` instead of `UTC_TIME()`, returning a full datetime value instead of time-only (#53).
+- **`get_indexes()`**: Fix PK index filtering — read `is_primary_key` from column 0 of the single-column query result instead of unreachable column 6, so primary-key indexes are properly excluded (#54).
+- **`has_table()`**: Recognize views as existing objects by accepting `class_type IN ('CLASS', 'VCLASS')` instead of only `'CLASS'` (#55).
+
+
 ## [2.1.0] - 2026-03-12
 
 ### Added

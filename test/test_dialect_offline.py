@@ -239,6 +239,13 @@ class TestExistenceChecks:
         connection.execute.return_value.scalar.return_value = 0
         assert dialect.has_table(connection, "users") is False
 
+    def test_has_table_recognizes_views(self):
+        dialect = CubridDialect()
+        connection = MagicMock()
+
+        connection.execute.return_value.scalar.return_value = 1
+        assert dialect.has_table(connection, "active_users") is True
+
     def test_has_index_true_false_and_exception(self):
         dialect = CubridDialect()
         connection = MagicMock()
@@ -421,11 +428,11 @@ class TestReflectionMethods:
         ]
 
         pk_short_row = MagicMock()
-        pk_short_row.fetchone.return_value = ("short",)
+        pk_short_row.fetchone.return_value = (0,)
         pk_false_row = MagicMock()
-        pk_false_row.fetchone.return_value = (None, None, None, None, None, None, False)
+        pk_false_row.fetchone.return_value = (0,)
         pk_true_row = MagicMock()
-        pk_true_row.fetchone.return_value = (None, None, None, None, None, None, True)
+        pk_true_row.fetchone.return_value = (1,)
 
         connection.execute.side_effect = [
             show_indexes_rows,

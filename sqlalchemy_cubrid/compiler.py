@@ -20,7 +20,7 @@ class CubridCompiler(compiler.SQLCompiler):
         return "SYSDATE"
 
     def visit_utc_timestamp_func(self, fn, **kw):
-        return "UTC_TIME()"
+        return "UTC_TIMESTAMP()"
 
     def visit_group_concat_func(self, fn, **kw):
         """Render GROUP_CONCAT aggregate function.

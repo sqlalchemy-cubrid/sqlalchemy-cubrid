@@ -240,7 +240,7 @@ class TestFunctionCompilation:
         """Test UTC_TIMESTAMP function compilation."""
         stmt = select(sa.func.utc_timestamp())
         sql = _compile(stmt)
-        assert "UTC_TIME()" in sql
+        assert "UTC_TIMESTAMP()" in sql
 
     def test_cast_string_to_integer(self):
         """Test casting string column to integer."""
@@ -912,14 +912,9 @@ class TestRecursiveCTECompilation:
 
     def test_recursive_cte_basic(self):
         """WITH RECURSIVE should compile correctly."""
-        cte = (
-            sa.select(sa.literal(1).label("n"))
-            .cte(name="counter", recursive=True)
-        )
+        cte = sa.select(sa.literal(1).label("n")).cte(name="counter", recursive=True)
         cte_alias = cte.alias()
-        cte = cte.union_all(
-            sa.select((cte_alias.c.n + 1).label("n")).where(cte_alias.c.n < 5)
-        )
+        cte = cte.union_all(sa.select((cte_alias.c.n + 1).label("n")).where(cte_alias.c.n < 5))
         stmt = sa.select(cte)
         sql = _compile(stmt)
         assert "WITH RECURSIVE" in sql
@@ -927,11 +922,7 @@ class TestRecursiveCTECompilation:
 
     def test_non_recursive_cte(self):
         """Non-recursive WITH should compile without RECURSIVE keyword."""
-        cte = (
-            sa.select(users.c.id, users.c.name)
-            .where(users.c.id > 0)
-            .cte(name="active_users")
-        )
+        cte = sa.select(users.c.id, users.c.name).where(users.c.id > 0).cte(name="active_users")
         stmt = sa.select(cte)
         sql = _compile(stmt)
         assert "WITH " in sql
@@ -940,10 +931,7 @@ class TestRecursiveCTECompilation:
 
     def test_cte_with_join(self):
         """CTE used in a JOIN should compile correctly."""
-        cte = (
-            sa.select(users.c.id, users.c.name)
-            .cte(name="user_cte")
-        )
+        cte = sa.select(users.c.id, users.c.name).cte(name="user_cte")
         stmt = sa.select(users.c.email, cte.c.name).select_from(
             users.join(cte, users.c.id == cte.c.id)
         )

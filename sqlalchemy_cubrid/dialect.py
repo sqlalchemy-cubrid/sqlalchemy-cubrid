@@ -401,7 +401,7 @@ class CubridDialect(default.DefaultDialect):
                     {"name": index_name},
                 )
                 pk_row = pk_result.fetchone()
-                is_primary_key = pk_row[6] if pk_row and len(pk_row) > 6 else False
+                is_primary_key = bool(pk_row[0]) if pk_row else False
             except Exception:
                 is_primary_key = False
 
@@ -469,7 +469,7 @@ class CubridDialect(default.DefaultDialect):
         result = connection.execute(
             text(
                 "SELECT COUNT(*) FROM db_class "
-                "WHERE class_type = 'CLASS' "
+                "WHERE class_type IN ('CLASS', 'VCLASS') "
                 "AND is_system_class = 'NO' "
                 "AND class_name = :name"
             ),
