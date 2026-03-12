@@ -66,8 +66,8 @@ class TestDialectProperties:
     def test_identifier_length(self):
         assert CubridDialect.max_identifier_length == 254
 
-    def test_no_default_values(self):
-        assert CubridDialect.supports_default_values is False
+    def test_supports_default_values(self):
+        assert CubridDialect.supports_default_values is True
 
     def test_multivalues_insert(self):
         assert CubridDialect.supports_multivalues_insert is True

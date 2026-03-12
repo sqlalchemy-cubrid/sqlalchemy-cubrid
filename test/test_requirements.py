@@ -56,7 +56,7 @@ class TestRequirements:
     @pytest.mark.parametrize(
         "property_name, expected_open",
         [
-            ("empty_inserts", False),
+            ("empty_inserts", True),
             ("insert_from_select", True),
             ("ctes", True),
             ("ctes_on_dml", False),

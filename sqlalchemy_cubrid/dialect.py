@@ -148,9 +148,9 @@ class CubridDialect(default.DefaultDialect):
     supports_comments = False
 
     # DML
-    supports_default_values = False
-    supports_default_metavalue = False
-    supports_empty_insert = False
+    supports_default_values = True
+    supports_default_metavalue = True
+    supports_empty_insert = True
     supports_multivalues_insert = True
     supports_is_distinct_from = False
 

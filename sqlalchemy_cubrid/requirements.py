@@ -100,8 +100,8 @@ class Requirements(SuiteRequirements):
 
     @property
     def empty_inserts(self):
-        """CUBRID does not support INSERT () VALUES ()."""
-        return exclusions.closed()
+        """CUBRID supports INSERT INTO t DEFAULT VALUES."""
+        return exclusions.open()
 
     @property
     def insert_from_select(self):

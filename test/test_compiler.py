@@ -91,6 +91,28 @@ class TestSelectCompilation:
         # FOR UPDATE should be present, NOWAIT is silently ignored by SA base compiler
         assert "FOR UPDATE" in sql
 
+
+class TestInsertCompilation:
+    """Test INSERT statement compilation."""
+
+    def test_insert_default_values(self):
+        """INSERT with no values should produce DEFAULT VALUES."""
+        from sqlalchemy import insert
+
+        stmt = insert(users).values()
+        sql = _compile(stmt)
+        assert "DEFAULT VALUES" in sql
+
+    def test_insert_with_values(self):
+        """INSERT with explicit values should compile normally."""
+        from sqlalchemy import insert
+
+        stmt = insert(users).values(name="test", email="test@example.com")
+        sql = _compile(stmt)
+        assert "INSERT INTO" in sql
+        assert "users" in sql
+
+
 class TestJoinCompilation:
     orders = Table(
         "orders",
