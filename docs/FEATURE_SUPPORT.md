@@ -439,4 +439,4 @@ Features not currently supported that may be added in future releases, depending
 
 ---
 
-*Last updated: March 2026 · sqlalchemy-cubrid v1.2.0 · SQLAlchemy 2.0+*
+*Last updated: March 2026 · sqlalchemy-cubrid v1.2.2 · SQLAlchemy 2.0+*

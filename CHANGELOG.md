@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-03-12
+
+### Added
+- `docs/CONNECTION.md`: Connection guide — URL format, driver setup, troubleshooting.
+- `docs/TYPES.md`: Type mapping reference — standard types, CUBRID-specific types, collection types, boolean handling.
+- `docs/ISOLATION_LEVELS.md`: Isolation level guide — all 6 CUBRID levels, dual-granularity model, configuration.
+- `docs/DML_EXTENSIONS.md`: DML extensions reference — ON DUPLICATE KEY UPDATE, MERGE, GROUP_CONCAT, TRUNCATE, FOR UPDATE, index hints.
+- `docs/ALEMBIC.md`: Alembic migration guide — setup, configuration, limitations, batch workarounds.
+- `docs/DEVELOPMENT.md`: Development guide — setup, testing, Docker, coverage, CI/CD pipeline.
+
+### Changed
+- `README.md`: Rewritten as a concise landing page (~80 lines); all detailed content moved to `docs/` files.
+- `docs/source/index.rst`: Added links to all new documentation files.
+- `docs/FEATURE_SUPPORT.md`: Updated version reference from v1.2.0 to v1.2.2.
+
+
 ## [1.2.1] - 2026-03-12
 
 ### Fixed
