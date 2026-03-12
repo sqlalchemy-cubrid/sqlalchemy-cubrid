@@ -1,5 +1,6 @@
-# This workflow will upload a Python Package using Twine when a release is created
-# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
+# Publish to PyPI using Trusted Publisher when a GitHub release is created.
+# Requires Trusted Publisher configured at:
+# https://pypi.org/manage/project/sqlalchemy-cubrid/settings/publishing/
 
 name: Upload Python Package
 
@@ -9,11 +10,12 @@ on:
 
 permissions:
   contents: read
+  id-token: write  # Required for Trusted Publisher (OIDC)
 
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
+    environment: pypi
 
     steps:
     - uses: actions/checkout@v4
@@ -29,6 +31,3 @@ jobs:
       run: python -m build
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
