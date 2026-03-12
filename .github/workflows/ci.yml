@@ -45,16 +45,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install pytest-cov
+          pip install pytest-cov alembic tomli
       - name: Run offline tests with coverage
         run: |
           python -m pytest \
-            test/test_dialects.py \
-            test/test_compiler.py \
-            test/test_types.py \
-            test/test_requirements.py \
-            test/test_dialect_offline.py \
-            test/test_base.py \
+            test/ \
+            --ignore=test/test_integration.py \
+            --ignore=test/test_suite.py \
             -v --tb=short \
             --cov=sqlalchemy_cubrid \
             --cov-report=term-missing \
