@@ -38,6 +38,9 @@ dev = [
     "pytest>=7.0",
     "ruff>=0.4",
 ]
+alembic = [
+    "alembic>=1.7",
+]
 
 [project.urls]
 Homepage = "https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid"
@@ -47,6 +50,9 @@ Documentation = "https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid"
 [project.entry-points."sqlalchemy.dialects"]
 cubrid = "sqlalchemy_cubrid.dialect:CubridDialect"
 "cubrid.cubrid" = "sqlalchemy_cubrid.dialect:CubridDialect"
+
+[project.entry-points."alembic.ddl"]
+cubrid = "sqlalchemy_cubrid.alembic_impl:CubridImpl"
 
 [tool.setuptools]
 packages = ["sqlalchemy_cubrid"]
