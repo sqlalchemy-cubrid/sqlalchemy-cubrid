@@ -271,7 +271,7 @@ The CI pipeline tests the following matrix:
 ### Requirements
 
 - **Minimum threshold**: 95% line coverage
-- **Current coverage**: 99% (314 tests, 968 statements, 3 unreachable)
+- **Current coverage**: 99.45% (396 tests, 1082 statements, 6 unreachable)
 - CI enforces the threshold via `--cov-fail-under=95`
 
 ### Running Coverage
@@ -291,14 +291,15 @@ make test
 
 ### Known Unreachable Lines
 
-Three lines are verified unreachable by design (defensive fallbacks that
+Three lines in `compiler.py` and one in `dml.py` are verified unreachable by design (defensive fallbacks that
 cannot trigger through SA's public API):
 
 | File | Line | Description |
 |---|---|---|
 | `compiler.py` | 72 | `for_update_clause` returning `""` |
 | `compiler.py` | 84 | `limit_clause` returning `""` |
-| `dml.py` | 259 | `else` branch in type normalization |
+| `compiler.py` | 298--300 | Defensive branch in DDL compilation |
+| `dml.py` | 310 | `else` branch in type normalization |
 
 ---
 
