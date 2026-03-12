@@ -18,6 +18,8 @@ Use this document to understand what the CUBRID dialect supports, what it doesn'
 - [Transactions & Connections](#transactions--connections)
 - [Dialect Engine Features](#dialect-engine-features)
 - [CUBRID-Specific Features](#cubrid-specific-features)
+- [CUBRID-Specific DML Constructs](#cubrid-specific-dml-constructs)
+- [Index Hints](#index-hints)
 - [Known Limitations & Roadmap](#known-limitations--roadmap)
 
 ---
@@ -38,11 +40,11 @@ High-level overview by feature category.
 
 | Category | CUBRID | MySQL | PostgreSQL | SQLite |
 |----------|--------|-------|------------|--------|
-| DML | ⚠️ | ✅ | ✅ | ⚠️ |
-| DDL | ⚠️ | ✅ | ✅ | ⚠️ |
-| Query features | ⚠️ | ✅ | ✅ | ✅ |
+| DML | ✅ | ✅ | ✅ | ⚠️ |
+| DDL | ✅ | ✅ | ✅ | ⚠️ |
+| Query features | ✅ | ✅ | ✅ | ✅ |
 | Type system | ⚠️ | ✅ | ✅ | ⚠️ |
-| Schema reflection | ⚠️ | ✅ | ✅ | ⚠️ |
+| Schema reflection | ✅ | ✅ | ✅ | ⚠️ |
 | Transactions | ✅ | ✅ | ✅ | ⚠️ |
 | Engine features | ⚠️ | ✅ | ✅ | ⚠️ |
 
@@ -55,23 +57,27 @@ High-level overview by feature category.
 | INSERT … RETURNING | ❌ | ❌ | ✅ | ✅ |
 | UPDATE … RETURNING | ❌ | ❌ | ✅ | ✅ |
 | DELETE … RETURNING | ❌ | ❌ | ✅ | ✅ |
-| INSERT … DEFAULT VALUES | ❌ | ❌ | ✅ | ✅ |
-| Empty INSERT | ❌ | ⚠️ | ✅ | ✅ |
+| INSERT … DEFAULT VALUES | ✅ | ❌ | ✅ | ✅ |
+| Empty INSERT | ✅ | ⚠️ | ✅ | ✅ |
 | Multi-row INSERT | ✅ | ✅ | ✅ | ✅ |
 | INSERT FROM SELECT | ✅ | ✅ | ✅ | ✅ |
-| UPSERT | ❌ | ✅ | ✅ | ✅ |
-| FOR UPDATE (row locking) | ❌ | ✅ | ✅ | ❌ |
+| ON DUPLICATE KEY UPDATE | ✅ | ✅ | ❌ | ❌ |
+| MERGE statement | ✅ | ❌ | ❌ | ❌ |
+| FOR UPDATE (row locking) | ✅ | ✅ | ✅ | ❌ |
 | UPDATE with LIMIT | ✅ | ✅ | ❌ | ❌ |
+| TRUNCATE TABLE | ✅ | ✅ | ✅ | ❌ |
 | IS DISTINCT FROM | ❌ | ❌ | ✅ | ❌ |
 | Postfetch LASTROWID | ❌ | ✅ | ❌ | ✅ |
 
 ### Notes
 
 - **RETURNING**: CUBRID has no `RETURNING` clause. Auto-generated keys cannot be fetched in the same round-trip as the INSERT; `postfetch_lastrowid` is also unavailable.
-- **Empty INSERT**: MySQL works around the missing `DEFAULT VALUES` syntax with `INSERT INTO t () VALUES ()`. CUBRID does not support either form.
-- **UPSERT**: CUBRID supports `ON DUPLICATE KEY UPDATE` at the SQL level, but the dialect does not wire it into SQLAlchemy's `insert().on_conflict_do_update()` API.
-- **FOR UPDATE**: CUBRID does not support `SELECT … FOR UPDATE`. The compiler emits an empty string for `for_update_clause`.
+- **DEFAULT VALUES**: CUBRID supports `INSERT INTO t DEFAULT VALUES`. The dialect sets `supports_default_values = True`.
+- **ON DUPLICATE KEY UPDATE**: CUBRID supports `INSERT … ON DUPLICATE KEY UPDATE` with `VALUES()` references (identical to MySQL pre-8.0 syntax). Use `sqlalchemy_cubrid.insert(table).on_duplicate_key_update(col=value)`. See [CUBRID-Specific DML Constructs](#cubrid-specific-dml-constructs) for usage examples.
+- **MERGE**: CUBRID supports the full SQL MERGE statement. Use `sqlalchemy_cubrid.dml.merge(target)` with `.using()`, `.on()`, `.when_matched_then_update()`, and `.when_not_matched_then_insert()`. See [CUBRID-Specific DML Constructs](#cubrid-specific-dml-constructs).
+- **FOR UPDATE**: CUBRID supports `SELECT … FOR UPDATE [OF col1, col2]`. NOWAIT and SKIP LOCKED are not supported.
 - **UPDATE with LIMIT**: CUBRID and MySQL both support `UPDATE … LIMIT n`. PostgreSQL and SQLite do not.
+- **TRUNCATE**: CUBRID supports `TRUNCATE TABLE`. The dialect includes `TRUNCATE` in autocommit detection.
 - **IS DISTINCT FROM**: Not a CUBRID SQL operator. SQLAlchemy may emulate it with `CASE` expressions on dialects that lack native support.
 
 ---
@@ -81,17 +87,18 @@ High-level overview by feature category.
 | Feature | CUBRID | MySQL | PostgreSQL | SQLite |
 |---------|--------|-------|------------|--------|
 | ALTER TABLE | ✅ | ✅ | ✅ | ⚠️ |
-| Table comments | ❌ | ✅ | ✅ | ❌ |
-| Column comments | ❌ | ✅ | ✅ | ❌ |
-| DROP … IF EXISTS | ❌ | ✅ | ✅ | ✅ |
+| Table comments | ✅ | ✅ | ✅ | ❌ |
+| Column comments | ✅ | ✅ | ✅ | ❌ |
+| CREATE … IF NOT EXISTS | ✅ | ✅ | ✅ | ✅ |
+| DROP … IF EXISTS | ✅ | ✅ | ✅ | ✅ |
 | Temporary tables | ❌ | ✅ | ✅ | ✅ |
 | Multiple schemas | ❌ | ✅ | ✅ | ⚠️ |
 
 ### Notes
 
 - **ALTER TABLE**: CUBRID supports standard `ALTER TABLE` for adding/dropping columns and constraints. SQLite has limited ALTER support (add column only; no drop/rename column before 3.35).
-- **Comments**: CUBRID does not support `COMMENT ON` or inline `COMMENT` syntax for tables or columns.
-- **IF EXISTS**: The CUBRID DDL compiler does not emit `IF EXISTS` for `DROP TABLE` and similar statements.
+- **Comments**: CUBRID supports inline `COMMENT` syntax for both tables (e.g., `CREATE TABLE t (...) COMMENT = 'text'`) and columns (e.g., `col TYPE COMMENT 'text'`). The dialect implements `SetTableComment`, `DropTableComment`, and `SetColumnComment` DDL constructs. Comment reflection is supported via `get_table_comment()` and column comments in `get_columns()`.
+- **IF NOT EXISTS / IF EXISTS**: CUBRID supports `CREATE TABLE IF NOT EXISTS` and `DROP TABLE IF EXISTS`. The base SA compiler handles these natively.
 - **Temporary tables**: CUBRID does not support `CREATE TEMPORARY TABLE` or session-scoped tables.
 - **Multiple schemas**: CUBRID operates in a single-schema model. MySQL uses databases as schemas. SQLite can attach databases but does not have true schema support.
 
@@ -103,7 +110,9 @@ High-level overview by feature category.
 |---------|--------|-------|------------|--------|
 | Common Table Expressions (WITH) | ✅ | ✅ | ✅ | ✅ |
 | CTEs on DML | ❌ | ❌ | ✅ | ❌ |
-| Window functions | ❌ | ✅ | ✅ | ✅ |
+| Window functions | ✅ | ✅ | ✅ | ✅ |
+| NULLS FIRST / NULLS LAST | ✅ | ❌ | ✅ | ✅ |
+| GROUP_CONCAT | ✅ | ✅ | ❌ | ✅ |
 | INTERSECT | ✅ | ✅ | ✅ | ✅ |
 | EXCEPT | ✅ | ✅ | ✅ | ✅ |
 | DISTINCT | ✅ | ✅ | ✅ | ✅ |
@@ -112,7 +121,9 @@ High-level overview by feature category.
 ### Notes
 
 - **CTEs**: CUBRID 11.0 supports `WITH` clauses for read queries. Writable CTEs (`WITH … INSERT/UPDATE/DELETE`) are not supported.
-- **Window functions**: CUBRID does not support `OVER()`, `ROW_NUMBER()`, `RANK()`, etc. MySQL added these in 8.0; SQLite in 3.25.
+- **Window functions**: CUBRID supports `ROW_NUMBER()`, `RANK()`, `DENSE_RANK()`, and other window functions with `OVER(PARTITION BY … ORDER BY …)`. The SA base compiler handles these natively.
+- **NULLS FIRST / NULLS LAST**: CUBRID supports `ORDER BY col ASC NULLS FIRST` and `ORDER BY col DESC NULLS LAST`. The SA base compiler handles these natively.
+- **GROUP_CONCAT**: CUBRID supports `GROUP_CONCAT([DISTINCT] expr [ORDER BY …] [SEPARATOR '…'])`. Use `sa.func.group_concat(column)`.
 - **LIMIT / OFFSET**: CUBRID uses MySQL-style `LIMIT [offset,] count` syntax. When only an offset is given, the dialect emits `LIMIT offset, 1073741823` (max int) as a workaround.
 
 ---
@@ -174,7 +185,8 @@ High-level overview by feature category.
 | Indexes | ✅ | ✅ | ✅ | ✅ |
 | Unique constraints | ✅ | ✅ | ✅ | ✅ |
 | Check constraints | ❌ | ✅ | ✅ | ❌ |
-| Table comments | ❌ | ✅ | ✅ | ❌ |
+| Table comments | ✅ | ✅ | ✅ | ❌ |
+| Column comments | ✅ | ✅ | ✅ | ❌ |
 | View names | ✅ | ✅ | ✅ | ✅ |
 | View definitions | ✅ | ✅ | ✅ | ✅ |
 | Schema names | ❌ | ✅ | ✅ | ❌ |
@@ -185,9 +197,11 @@ High-level overview by feature category.
 
 ### Notes
 
-- **Check constraints**: CUBRID stores check constraints internally but the dialect does not reflect them. The `get_check_constraints()` method returns an empty list.
+- **Check constraints**: CUBRID parses check constraints but ignores them at runtime (officially documented behavior). The `get_check_constraints()` method returns an empty list.
+- **Table comments**: Reflected via `get_table_comment()` querying the `db_class.comment` system catalog column.
+- **Column comments**: Reflected via `get_columns()` querying the `_db_attribute.comment` system catalog column. Returned in the `"comment"` key of each column dict.
 - **has_index**: The CUBRID dialect implements `has_index()` by querying `db_index`. The MySQL SA dialect does not provide a dedicated `has_index()` method.
-- **Reflection source**: CUBRID reflection queries the system catalog tables (`db_class`, `db_attribute`, `db_index`, `db_constraint`, `_db_index`) rather than `INFORMATION_SCHEMA`.
+- **Reflection source**: CUBRID reflection queries the system catalog tables (`db_class`, `db_attribute`, `db_index`, `db_constraint`, `_db_index`, `_db_attribute`) rather than `INFORMATION_SCHEMA`.
 
 ---
 
@@ -220,6 +234,7 @@ CUBRID supports six isolation levels — more than the SQL standard's four:
 - **Two-phase commit**: CUBRID does not support distributed transactions via `XA`.
 - **Server-side cursors**: The CUBRID Python driver does not expose server-side cursor functionality.
 - **Autocommit detection**: The CUBRID execution context uses a regex pattern matching `SET`, `ALTER`, `CREATE`, `DROP`, `GRANT`, `REVOKE`, and `TRUNCATE` statements to determine when to enable autocommit.
+- **Savepoints**: CUBRID supports `SAVEPOINT` and `ROLLBACK TO SAVEPOINT`. `RELEASE SAVEPOINT` is not supported — the dialect implements `do_release_savepoint()` as a no-op.
 
 ---
 
@@ -276,23 +291,152 @@ These are fully supported by the dialect's type compiler and can be used in `Col
 
 ---
 
+## CUBRID-Specific DML Constructs
+
+The dialect provides custom SQLAlchemy constructs for CUBRID-specific DML features that go beyond the standard SA API.
+
+### ON DUPLICATE KEY UPDATE
+
+CUBRID supports `INSERT … ON DUPLICATE KEY UPDATE` with `VALUES()` references (identical to MySQL pre-8.0 syntax).
+
+```python
+from sqlalchemy_cubrid import insert
+
+stmt = insert(users).values(id=1, name="alice", email="alice@example.com")
+stmt = stmt.on_duplicate_key_update(name="updated_alice")
+# INSERT INTO users (id, name, email) VALUES (1, 'alice', 'alice@example.com')
+# ON DUPLICATE KEY UPDATE name = 'updated_alice'
+
+# Reference the inserted value:
+stmt = insert(users).values(id=1, name="alice", email="alice@example.com")
+stmt = stmt.on_duplicate_key_update(name=stmt.inserted.name)
+# ON DUPLICATE KEY UPDATE name = VALUES(name)
+```
+
+**Accepted argument forms:**
+- Keyword arguments: `stmt.on_duplicate_key_update(name="value")`
+- Dictionary: `stmt.on_duplicate_key_update({"name": "value"})`
+- List of tuples (ordered): `stmt.on_duplicate_key_update([("name", "value"), ("email", "value")])`
+
+### MERGE Statement
+
+CUBRID supports the SQL `MERGE` statement for conditional INSERT/UPDATE in a single operation.
+
+```python
+from sqlalchemy_cubrid.dml import merge
+
+stmt = (
+    merge(target_table)
+    .using(source_table)
+    .on(target_table.c.id == source_table.c.id)
+    .when_matched_then_update(
+        {"name": source_table.c.name, "email": source_table.c.email},
+        where=source_table.c.name.is_not(None),       # optional WHERE
+        delete_where=target_table.c.active == False,   # optional DELETE WHERE
+    )
+    .when_not_matched_then_insert(
+        {
+            "id": source_table.c.id,
+            "name": source_table.c.name,
+            "email": source_table.c.email,
+        },
+        where=source_table.c.name.is_not(None),  # optional WHERE
+    )
+)
+```
+
+**Generated SQL:**
+```sql
+MERGE INTO target_table
+USING source_table
+ON (target_table.id = source_table.id)
+WHEN MATCHED THEN UPDATE SET name = source_table.name, email = source_table.email
+  WHERE source_table.name IS NOT NULL
+  DELETE WHERE target_table.active = 0
+WHEN NOT MATCHED THEN INSERT (id, name, email)
+  VALUES (source_table.id, source_table.name, source_table.email)
+  WHERE source_table.name IS NOT NULL
+```
+
+**Builder methods:**
+- `merge(target)` — factory function, sets target table
+- `.using(source)` — source table or subquery
+- `.on(condition)` — join condition
+- `.when_matched_then_update(values, where=None, delete_where=None)` — UPDATE clause
+- `.when_matched_then_delete(where=None)` — adds DELETE WHERE to an existing WHEN MATCHED clause
+- `.when_not_matched_then_insert(values, where=None)` — INSERT clause
+
+At least one of `when_matched_then_update` or `when_not_matched_then_insert` must be specified.
+
+### GROUP_CONCAT
+
+CUBRID supports `GROUP_CONCAT` as an aggregate function:
+
+```python
+import sqlalchemy as sa
+
+stmt = sa.select(sa.func.group_concat(users.c.name))
+# SELECT GROUP_CONCAT(users.name) FROM users
+```
+
+---
+
+## Index Hints
+
+CUBRID supports index hints in SELECT queries. These can be used via SQLAlchemy's built-in hint mechanisms — no custom dialect constructs are needed.
+
+### USING INDEX
+
+```python
+# Using Select.with_hint()
+stmt = (
+    sa.select(users)
+    .with_hint(users, "USING INDEX idx_users_name", dialect_name="cubrid")
+)
+
+# Using Select.suffix_with()
+stmt = sa.select(users).suffix_with("USING INDEX idx_users_name")
+```
+
+### USE INDEX / FORCE INDEX / IGNORE INDEX
+
+```python
+stmt = (
+    sa.select(users)
+    .with_hint(users, "USE INDEX (idx_users_name)", dialect_name="cubrid")
+)
+
+stmt = (
+    sa.select(users)
+    .with_hint(users, "FORCE INDEX (idx_users_email)", dialect_name="cubrid")
+)
+
+stmt = (
+    sa.select(users)
+    .with_hint(users, "IGNORE INDEX (idx_users_old)", dialect_name="cubrid")
+)
+```
+
+> **Note**: When using `with_hint(dialect_name="cubrid")`, the hint is only emitted when compiling against the CUBRID dialect. Other dialects will ignore it, making your code safely portable.
+
+---
+
 ## Known Limitations & Roadmap
 
 Features not currently supported that may be added in future releases, depending on CUBRID database evolution and community contributions.
 
-| Feature | Status | Blocker |
-|---------|--------|---------|
-| Window functions | ❌ | CUBRID lacks `OVER()` support |
-| JSON type | ❌ | CUBRID lacks JSON data type |
-| RETURNING clause | ❌ | CUBRID lacks `RETURNING` syntax |
-| Temporary tables | ❌ | CUBRID lacks `CREATE TEMPORARY TABLE` |
-| Table / column comments | ❌ | CUBRID lacks `COMMENT` syntax |
-| Check constraint reflection | ❌ | Requires catalog query implementation |
-| UPSERT integration | ❌ | Requires wiring `ON DUPLICATE KEY UPDATE` to SA's conflict API |
-| DDL IF EXISTS | ❌ | Requires DDL compiler override |
-| FOR UPDATE | ❌ | CUBRID lacks row-level locking in SELECT |
+| Feature | Status | Reason |
+|---------|--------|--------|
+| RETURNING clause | ❌ | CUBRID does not support `INSERT/UPDATE/DELETE … RETURNING` |
 | Postfetch LASTROWID | ❌ | CUBRID Python driver limitation |
+| JSON type | ❌ | CUBRID does not have a JSON data type |
+| Temporary tables | ❌ | CUBRID does not support `CREATE TEMPORARY TABLE` |
+| Multiple schemas | ❌ | CUBRID operates in a single-schema model |
+| IS DISTINCT FROM | ❌ | Not a CUBRID SQL operator |
+| Check constraint reflection | ❌ | CUBRID parses but ignores CHECK constraints |
+| Sequences | ❌ | CUBRID uses `AUTO_INCREMENT` instead |
+| Alembic migrations | ❌ | Not yet implemented |
 
 ---
 
-*Last updated: March 2026 · sqlalchemy-cubrid v1.0.0 · SQLAlchemy 2.0+*
+*Last updated: March 2026 · sqlalchemy-cubrid v1.1.0 · SQLAlchemy 2.0+*

@@ -58,6 +58,16 @@ Features
 - Statement caching (`supports_statement_cache = True`)
 - Type system: all CUBRID numeric, string, date/time, bit, LOB, and collection types
 - SQL compilation: SELECT, JOIN, CAST, LIMIT/OFFSET, UPDATE with LIMIT
+- `FOR UPDATE` clause (`SELECT … FOR UPDATE [OF col1, col2]`)
+- `ON DUPLICATE KEY UPDATE` via CUBRID-specific `insert()` construct
+- `MERGE` statement via `merge()` construct with full WHEN MATCHED/NOT MATCHED support
+- Window functions (`ROW_NUMBER`, `RANK`, `DENSE_RANK`, etc.) with `OVER()`
+- `NULLS FIRST` / `NULLS LAST` in ORDER BY
+- `INSERT … DEFAULT VALUES` and empty inserts
+- Table and column `COMMENT` support (inline DDL + ALTER + reflection)
+- `IF NOT EXISTS` / `IF EXISTS` DDL for CREATE TABLE and DROP TABLE
+- `GROUP_CONCAT` aggregate function
+- `TRUNCATE TABLE` with autocommit detection
 - Reflection: tables, views, columns, primary keys, foreign keys, indexes, unique constraints
 - Isolation level management (all 6 CUBRID isolation levels)
 - Connection string translation to CUBRID format (`CUBRID:host:port:db:::`)
@@ -144,15 +154,13 @@ Known Limitations
 | Feature | Status | Reason |
 |---|---|---|
 | `RETURNING` clause | ❌ | CUBRID does not support `RETURNING` |
-| `FOR UPDATE` | ❌ | No row-level locking in SELECT |
-| `DEFAULT VALUES` in INSERT | ❌ | Not supported by CUBRID |
 | Native `BOOLEAN` | ⚠️ | Mapped to `SMALLINT` |
 | `JSON` type | ❌ | No JSON data type in CUBRID |
 | `ARRAY` type | ❌ | Use `SET`/`MULTISET`/`SEQUENCE` instead |
 | Sequences | ❌ | CUBRID uses `AUTO_INCREMENT` |
 | Multi-schema | ❌ | Single-schema model |
-| Window functions | ❌ | No `OVER()` support |
-| Temporary tables | ❌ | Not supported by CUBRID |
+| Temporary tables | ❌ | Not confirmed in CUBRID |
+| `IS DISTINCT FROM` | ❌ | Not supported by CUBRID |
 | Alembic migrations | ❌ | Not yet implemented |
 
 For a detailed feature-by-feature comparison with MySQL, PostgreSQL, and SQLite,

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-12
+
+### Added
+- `FOR UPDATE` clause support (`SELECT … FOR UPDATE [OF col1, col2]`).
+- `INSERT … DEFAULT VALUES` and empty INSERT support.
+- Window functions (`ROW_NUMBER`, `RANK`, `DENSE_RANK`, `NTILE`, `LAG`, `LEAD`, etc.) with `OVER()` clause.
+- `NULLS FIRST` / `NULLS LAST` ordering in ORDER BY.
+- Table and column `COMMENT` support — inline DDL, `ALTER` statements, and schema reflection.
+- `IF NOT EXISTS` / `IF EXISTS` DDL support for `CREATE TABLE` and `DROP TABLE`.
+- `ON DUPLICATE KEY UPDATE` via CUBRID-specific `sqlalchemy_cubrid.insert()` construct (MySQL-compatible syntax).
+- `MERGE` statement via `sqlalchemy_cubrid.merge()` with full `WHEN MATCHED` / `WHEN NOT MATCHED` clause support.
+- `GROUP_CONCAT` aggregate function compilation.
+- `TRUNCATE TABLE` autocommit detection.
+- Index hint documentation (`USING INDEX`, `USE INDEX`, `FORCE INDEX`, `IGNORE INDEX` via SQLAlchemy’s built-in `with_hint()` / `suffix_with()`).
+- `docs/FEATURE_SUPPORT.md`: Comprehensive feature support matrix updated with all new capabilities.
+
 ## [1.0.0] - 2026-03-12
 
 ### Changed
