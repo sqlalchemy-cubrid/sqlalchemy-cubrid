@@ -632,6 +632,81 @@ class TestDDLCompilation:
         assert "VARCHAR(100)" in ddl
 
 
+class TestCommentCompilation:
+    def test_column_comment_in_ddl(self):
+        from sqlalchemy.schema import CreateTable
+
+        t = sa.Table(
+            "t",
+            sa.MetaData(),
+            sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("name", sa.String(50), comment="user name"),
+        )
+        compiled = CreateTable(t).compile(dialect=CubridDialect())
+        sql = str(compiled)
+        assert "COMMENT" in sql
+        assert "user name" in sql
+
+    def test_table_comment_in_ddl(self):
+        from sqlalchemy.schema import CreateTable
+
+        t = sa.Table(
+            "t",
+            sa.MetaData(),
+            sa.Column("id", sa.Integer, primary_key=True),
+            comment="my table",
+        )
+        compiled = CreateTable(t).compile(dialect=CubridDialect())
+        sql = str(compiled)
+        assert "COMMENT =" in sql
+        assert "my table" in sql
+
+    def test_set_table_comment(self):
+        from sqlalchemy.schema import SetTableComment
+
+        t = sa.Table(
+            "t",
+            sa.MetaData(),
+            sa.Column("id", sa.Integer),
+            comment="new comment",
+        )
+        compiled = SetTableComment(t).compile(dialect=CubridDialect())
+        sql = str(compiled)
+        assert "ALTER TABLE" in sql
+        assert "COMMENT =" in sql
+        assert "new comment" in sql
+
+    def test_drop_table_comment(self):
+        from sqlalchemy.schema import DropTableComment
+
+        t = sa.Table(
+            "t",
+            sa.MetaData(),
+            sa.Column("id", sa.Integer),
+            comment="old comment",
+        )
+        compiled = DropTableComment(t).compile(dialect=CubridDialect())
+        sql = str(compiled)
+        assert "ALTER TABLE" in sql
+        assert "COMMENT = ''" in sql
+
+    def test_set_column_comment(self):
+        from sqlalchemy.schema import SetColumnComment
+
+        t = sa.Table(
+            "t",
+            sa.MetaData(),
+            sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("name", sa.String(50), comment="new name"),
+        )
+        compiled = SetColumnComment(t.c.name).compile(dialect=CubridDialect())
+        sql = str(compiled)
+        assert "ALTER TABLE" in sql
+        assert "MODIFY" in sql
+        assert "COMMENT" in sql
+        assert "new name" in sql
+
+
 class TestUpdateCompilation:
     """Test UPDATE statement compilation with LIMIT and FROM."""
 

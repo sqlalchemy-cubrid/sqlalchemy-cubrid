@@ -145,7 +145,8 @@ class CubridDialect(default.DefaultDialect):
 
     # DDL
     supports_alter = True
-    supports_comments = False
+    supports_comments = True
+    inline_comments = True
 
     # DML
     supports_default_values = True
@@ -256,6 +257,22 @@ class CubridDialect(default.DefaultDialect):
                     "autoincrement": autoincrement,
                 }
             )
+
+        try:
+            comment_result = connection.execute(
+                text(
+                    "SELECT attr_name, comment FROM _db_attribute "
+                    "WHERE class_name = :name ORDER BY def_order"
+                ),
+                {"name": table_name},
+            )
+            comment_map = {row[0]: row[1] for row in comment_result}
+        except Exception:
+            comment_map = {}
+
+        for column in columns:
+            column["comment"] = comment_map.get(column["name"])
+
         return columns
 
     @reflection.cache
@@ -434,8 +451,13 @@ class CubridDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_table_comment(self, connection, table_name, schema=None, **kw):
-        """Return table comment.  CUBRID does not support table comments."""
-        return {"text": None}
+        """Return table comment from CUBRID system catalog."""
+        result = connection.execute(
+            text("SELECT comment FROM db_class WHERE class_name = :name"),
+            {"name": table_name},
+        )
+        row = result.fetchone()
+        return {"text": row[0] if row and row[0] else None}
 
     def get_schema_names(self, connection, **kw):
         """Return schema names.  CUBRID does not support schemas."""

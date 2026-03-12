@@ -273,7 +273,12 @@ class TestReflectionMethods:
             ("int_col", "INTEGER", "NO", "", None, "auto_increment"),
             ("unknown_col", "MYSTERY", "YES", "", None, ""),
         ]
-        connection.execute.return_value = rows
+        comment_rows = [
+            ("char_col", "char comment"),
+            ("int_col", "int comment"),
+            ("unknown_col", None),
+        ]
+        connection.execute.side_effect = [rows, comment_rows]
 
         with patch("sqlalchemy.sql.util.warn", create=True) as warn:
             columns = _invoke_reflection(dialect, "get_columns", connection, "sample_table")
@@ -299,8 +304,10 @@ class TestReflectionMethods:
 
         assert columns[5]["type"].__class__.__name__ == "INTEGER"
         assert columns[5]["autoincrement"] is True
+        assert columns[5]["comment"] == "int comment"
 
         assert columns[6]["type"] is sqltypes.NULLTYPE
+        assert columns[6]["comment"] is None
         warn.assert_called_once()
 
     def test_get_pk_constraint_with_primary_key_and_constraint_name(self):
@@ -475,12 +482,15 @@ class TestReflectionMethods:
         connection = MagicMock()
         connection.info_cache = {}
         connection.dialect_options = {}
+        table_comment_result = MagicMock()
+        table_comment_result.fetchone.return_value = ("users table comment",)
+        connection.execute.return_value = table_comment_result
 
         checks = _invoke_reflection(dialect, "get_check_constraints", connection, "users")
         comment = _invoke_reflection(dialect, "get_table_comment", connection, "users")
 
         assert checks == []
-        assert comment == {"text": None}
+        assert comment == {"text": "users table comment"}
         assert dialect.get_schema_names(connection) == []
 
 

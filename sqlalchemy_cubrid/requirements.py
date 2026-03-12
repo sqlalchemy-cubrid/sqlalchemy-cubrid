@@ -89,8 +89,8 @@ class Requirements(SuiteRequirements):
 
     @property
     def comment_reflection(self):
-        """CUBRID does not support table/column comments."""
-        return exclusions.closed()
+        """CUBRID supports table and column comments."""
+        return exclusions.open()
 
     @property
     def check_constraint_reflection(self):

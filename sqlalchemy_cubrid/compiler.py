@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from sqlalchemy.sql import compiler
+from sqlalchemy.sql import sqltypes
 
 
 class CubridCompiler(compiler.SQLCompiler):
@@ -134,7 +135,52 @@ class CubridDDLCompiler(compiler.DDLCompiler):
             if default is not None:
                 colspec.append("DEFAULT " + default)
 
+        if column.comment is not None:
+            literal = self.sql_compiler.render_literal_value(
+                column.comment,
+                sqltypes.String(),
+            )
+            colspec.append("COMMENT " + literal)
+
         return " ".join(colspec)
+
+    def post_create_table(self, table):
+        table_opts = []
+        if table.comment is not None:
+            literal = self.sql_compiler.render_literal_value(
+                table.comment,
+                sqltypes.String(),
+            )
+            table_opts.append(f"\n COMMENT = {literal}")
+        return "".join(table_opts)
+
+    def visit_set_table_comment(self, create, **kw):
+        return "ALTER TABLE %s COMMENT = %s" % (
+            self.preparer.format_table(create.element),
+            self.sql_compiler.render_literal_value(
+                create.element.comment,
+                sqltypes.String(),
+            ),
+        )
+
+    def visit_drop_table_comment(self, drop, **kw):
+        return "ALTER TABLE %s COMMENT = ''" % (
+            self.preparer.format_table(drop.element),
+        )
+
+    def visit_set_column_comment(self, create, **kw):
+        return "ALTER TABLE %s MODIFY %s %s COMMENT %s" % (
+            self.preparer.format_table(create.element.table),
+            self.preparer.format_column(create.element),
+            self.dialect.type_compiler_instance.process(
+                create.element.type,
+                type_expression=create.element,
+            ),
+            self.sql_compiler.render_literal_value(
+                create.element.comment,
+                sqltypes.String(),
+            ),
+        )
 
 
 class CubridTypeCompiler(compiler.GenericTypeCompiler):

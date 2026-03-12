@@ -46,7 +46,7 @@ class TestRequirements:
             ("temporary_tables", False),
             ("temporary_views", False),
             ("table_ddl_if_exists", False),
-            ("comment_reflection", False),
+            ("comment_reflection", True),
             ("check_constraint_reflection", False),
         ],
     )
