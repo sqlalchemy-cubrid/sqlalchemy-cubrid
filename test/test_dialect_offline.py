@@ -503,3 +503,273 @@ class TestDoReleaseSavepoint:
         result = dialect.do_release_savepoint(connection, "sp_test")
         assert result is None
         connection.execute.assert_not_called()
+
+
+class TestIsDisconnect:
+    """Tests for CubridDialect.is_disconnect() error detection."""
+
+    @pytest.fixture()
+    def dialect_with_dbapi(self):
+        """Create a dialect with a mock dbapi module."""
+        dialect = CubridDialect()
+
+        # Build a mock dbapi module with CUBRIDdb's actual exception hierarchy:
+        # Error (base) -> InterfaceError, DatabaseError, NotSupportedError
+        dbapi = MagicMock()
+
+        class Error(Exception):
+            pass
+
+        class InterfaceError(Error):
+            pass
+
+        class DatabaseError(Error):
+            pass
+
+        class NotSupportedError(Error):
+            pass
+
+        dbapi.Error = Error
+        dbapi.InterfaceError = InterfaceError
+        dbapi.DatabaseError = DatabaseError
+        dbapi.NotSupportedError = NotSupportedError
+
+        dialect.dbapi = dbapi
+        return dialect, dbapi
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "connection is closed",
+            "Closed connection detected",
+            "Lost connection to server",
+            "server has gone away",
+            "Connection Reset by peer",
+            "Broken Pipe in socket",
+            "Cannot communicate with the broker",
+            "Received invalid packet from server",
+            "Broker is not available right now",
+            "Communication error during query",
+            "Connection timed out after 30s",
+            "Connection refused on port 33000",
+            "connection was killed by admin",
+            "Failed to connect to host",
+        ],
+    )
+    def test_disconnect_message_patterns(self, dialect_with_dbapi, message):
+        """is_disconnect() returns True for known disconnect messages."""
+        dialect, dbapi = dialect_with_dbapi
+        exc = dbapi.DatabaseError(message)
+        assert dialect.is_disconnect(exc, None, None) is True
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "syntax error in SQL",
+            "unique constraint violation",
+            "table not found",
+            "permission denied",
+            "division by zero",
+        ],
+    )
+    def test_non_disconnect_messages(self, dialect_with_dbapi, message):
+        """is_disconnect() returns False for non-disconnect errors."""
+        dialect, dbapi = dialect_with_dbapi
+        exc = dbapi.DatabaseError(message)
+        assert dialect.is_disconnect(exc, None, None) is False
+
+    @pytest.mark.parametrize(
+        "error_code",
+        [
+            -21003,  # CAS_ER_COMMUNICATION
+            -21005,  # CAS_ER_COMMUNICATION (alternate)
+            -10005,  # ER_NET_CANT_CONNECT
+            -10007,  # ER_NET_SERVER_COMM_ERROR
+        ],
+    )
+    def test_disconnect_by_error_code(self, dialect_with_dbapi, error_code):
+        """is_disconnect() returns True for known disconnect error codes."""
+        dialect, dbapi = dialect_with_dbapi
+        exc = dbapi.DatabaseError(error_code)
+        assert dialect.is_disconnect(exc, None, None) is True
+
+    def test_disconnect_with_interface_error(self, dialect_with_dbapi):
+        """is_disconnect() works with InterfaceError subclass."""
+        dialect, dbapi = dialect_with_dbapi
+        exc = dbapi.InterfaceError("connection is closed")
+        assert dialect.is_disconnect(exc, None, None) is True
+
+    def test_non_dbapi_error_returns_false(self, dialect_with_dbapi):
+        """is_disconnect() returns False for non-DBAPI exceptions."""
+        dialect, _ = dialect_with_dbapi
+        exc = RuntimeError("connection is closed")
+        assert dialect.is_disconnect(exc, None, None) is False
+
+    def test_disconnect_error_code_in_string_arg(self, dialect_with_dbapi):
+        """is_disconnect() extracts numeric code from string like '-21003 msg'."""
+        dialect, dbapi = dialect_with_dbapi
+        exc = dbapi.DatabaseError("-21003 Cannot communicate with the broker")
+        assert dialect.is_disconnect(exc, None, None) is True
+
+    def test_disconnect_with_empty_args(self, dialect_with_dbapi):
+        """is_disconnect() handles exception with no args gracefully."""
+        dialect, dbapi = dialect_with_dbapi
+        exc = dbapi.DatabaseError()
+        assert dialect.is_disconnect(exc, None, None) is False
+
+
+class TestExtractErrorCode:
+    """Tests for CubridDialect._extract_error_code()."""
+
+    def test_integer_arg(self):
+        """Extracts integer error code from args[0]."""
+        exc = Exception(-21003)
+        assert CubridDialect._extract_error_code(exc) == -21003
+
+    def test_string_with_embedded_code(self):
+        """Extracts error code from string like '-21003 message'."""
+        exc = Exception("-21003 Cannot communicate")
+        assert CubridDialect._extract_error_code(exc) == -21003
+
+    def test_string_without_code(self):
+        """Returns None for string without leading number."""
+        exc = Exception("some error message")
+        assert CubridDialect._extract_error_code(exc) is None
+
+    def test_empty_args(self):
+        """Returns None for exception with no args."""
+        exc = Exception()
+        assert CubridDialect._extract_error_code(exc) is None
+
+    def test_empty_string_arg(self):
+        """Returns None for exception with empty string arg."""
+        exc = Exception("")
+        assert CubridDialect._extract_error_code(exc) is None
+
+    def test_non_numeric_string_code(self):
+        """Returns None when first token is not numeric."""
+        exc = Exception("ERROR: connection lost")
+        assert CubridDialect._extract_error_code(exc) is None
+
+    def test_positive_integer(self):
+        """Handles positive integer error codes."""
+        exc = Exception(1234)
+        assert CubridDialect._extract_error_code(exc) == 1234
+
+
+class TestDoPing:
+    """Tests for CubridDialect.do_ping()."""
+
+    def test_ping_success(self):
+        """do_ping() returns True when ping() succeeds."""
+        dialect = CubridDialect()
+        dbapi_conn = MagicMock()
+        dbapi_conn.ping.return_value = None
+
+        result = dialect.do_ping(dbapi_conn)
+
+        assert result is True
+        dbapi_conn.ping.assert_called_once()
+
+    def test_ping_propagates_exception(self):
+        """do_ping() lets exceptions propagate (SA catches them)."""
+        dialect = CubridDialect()
+        dbapi_conn = MagicMock()
+        dbapi_conn.ping.side_effect = RuntimeError("connection lost")
+
+        with pytest.raises(RuntimeError, match="connection lost"):
+            dialect.do_ping(dbapi_conn)
+
+
+class TestPostfetchLastRowId:
+    """Tests for postfetch_lastrowid flag and get_lastrowid behavior."""
+
+    def test_postfetch_lastrowid_is_true(self):
+        """CubridDialect sets postfetch_lastrowid = True."""
+        dialect = CubridDialect()
+        assert dialect.postfetch_lastrowid is True
+
+    def test_get_lastrowid_via_driver_method(self):
+        """get_lastrowid() uses raw connection's get_last_insert_id()."""
+        from sqlalchemy_cubrid.base import CubridExecutionContext
+
+        ctx = CubridExecutionContext.__new__(CubridExecutionContext)
+        raw_conn = MagicMock()
+        raw_conn.get_last_insert_id.return_value = 42
+
+        connection = MagicMock()
+        connection.connection.dbapi_connection = raw_conn
+        ctx.root_connection = connection
+
+        assert ctx.get_lastrowid() == 42
+        raw_conn.get_last_insert_id.assert_called_once()
+
+    def test_get_lastrowid_fallback_to_sql(self):
+        """get_lastrowid() falls back to SELECT LAST_INSERT_ID()."""
+        from sqlalchemy_cubrid.base import CubridExecutionContext
+
+        ctx = CubridExecutionContext.__new__(CubridExecutionContext)
+
+        # Make the driver method unavailable
+        raw_conn = MagicMock(spec=[])
+        connection = MagicMock()
+        connection.connection.dbapi_connection = raw_conn
+        ctx.root_connection = connection
+
+        cursor = MagicMock()
+        cursor.fetchone.return_value = (99,)
+        ctx.create_server_side_cursor = MagicMock(return_value=cursor)
+
+        assert ctx.get_lastrowid() == 99
+        cursor.execute.assert_called_once_with("SELECT LAST_INSERT_ID()")
+        cursor.close.assert_called_once()
+
+    def test_get_lastrowid_returns_none_when_no_result(self):
+        """get_lastrowid() returns None if SELECT LAST_INSERT_ID() returns nothing."""
+        from sqlalchemy_cubrid.base import CubridExecutionContext
+
+        ctx = CubridExecutionContext.__new__(CubridExecutionContext)
+
+        raw_conn = MagicMock(spec=[])
+        connection = MagicMock()
+        connection.connection.dbapi_connection = raw_conn
+        ctx.root_connection = connection
+
+        cursor = MagicMock()
+        cursor.fetchone.return_value = None
+        ctx.create_server_side_cursor = MagicMock(return_value=cursor)
+
+        assert ctx.get_lastrowid() is None
+
+    def test_get_lastrowid_exception_in_driver_method(self):
+        """get_lastrowid() falls back if get_last_insert_id() raises."""
+        from sqlalchemy_cubrid.base import CubridExecutionContext
+
+        ctx = CubridExecutionContext.__new__(CubridExecutionContext)
+
+        raw_conn = MagicMock()
+        raw_conn.get_last_insert_id.side_effect = RuntimeError("driver error")
+        connection = MagicMock()
+        connection.connection.dbapi_connection = raw_conn
+        ctx.root_connection = connection
+
+        cursor = MagicMock()
+        cursor.fetchone.return_value = (77,)
+        ctx.create_server_side_cursor = MagicMock(return_value=cursor)
+
+        assert ctx.get_lastrowid() == 77
+
+
+class TestDisconnectMessages:
+    """Ensure _disconnect_messages tuple is properly defined."""
+
+    def test_disconnect_messages_is_tuple(self):
+        assert isinstance(CubridDialect._disconnect_messages, tuple)
+
+    def test_disconnect_messages_all_lowercase(self):
+        """All patterns must be lowercase for case-insensitive matching."""
+        for msg in CubridDialect._disconnect_messages:
+            assert msg == msg.lower(), f"Pattern not lowercase: {msg!r}"
+
+    def test_disconnect_messages_not_empty(self):
+        assert len(CubridDialect._disconnect_messages) > 0

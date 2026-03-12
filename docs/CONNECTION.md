@@ -254,4 +254,112 @@ with engine.connect() as conn:
 
 ---
 
+## Connection Pool Tuning
+
+SQLAlchemy manages a connection pool by default. Understanding how CUBRID interacts with the pool is important for production deployments.
+
+### Key Pool Parameters
+
+```python
+from sqlalchemy import create_engine
+
+engine = create_engine(
+    "cubrid://dba@localhost:33000/testdb",
+
+    # Pool size: number of persistent connections to keep
+    pool_size=5,           # Default: 5
+
+    # Overflow: additional connections allowed beyond pool_size
+    max_overflow=10,       # Default: 10
+
+    # Timeout: seconds to wait for a connection from the pool
+    pool_timeout=30,       # Default: 30
+
+    # Recycle: seconds before a connection is replaced
+    # Set this LOWER than CUBRID broker's SESSION_TIMEOUT
+    pool_recycle=1800,     # Recommended: 1800 (30 minutes)
+
+    # Pre-ping: test connection liveness before checkout
+    pool_pre_ping=True,    # Recommended: True for production
+)
+```
+
+### `pool_pre_ping` (Recommended)
+
+When `pool_pre_ping=True`, SQLAlchemy calls `do_ping()` on each connection before handing it to your application. The CUBRID dialect uses the native `connection.ping()` method from the CUBRID Python driver, which sends a lightweight CCI-level ping to the broker.
+
+This prevents "stale connection" errors that occur when:
+- The CUBRID broker restarts
+- Network interruptions occur
+- The broker's `SESSION_TIMEOUT` expires
+
+```python
+# Production-recommended configuration
+engine = create_engine(
+    "cubrid://dba@localhost:33000/mydb",
+    pool_pre_ping=True,
+    pool_recycle=1800,
+)
+```
+
+### `pool_recycle` and CUBRID Broker Timeout
+
+CUBRID's broker has a `SESSION_TIMEOUT` setting (default varies by version, typically 300 seconds). If a pooled connection sits idle longer than this timeout, the broker will close it server-side.
+
+**Always set `pool_recycle` lower than `SESSION_TIMEOUT`** to avoid stale connections:
+
+```python
+# If CUBRID broker SESSION_TIMEOUT is 300 (5 minutes)
+engine = create_engine(
+    "cubrid://dba@localhost:33000/mydb",
+    pool_recycle=240,  # Recycle before broker timeout
+)
+```
+
+### Disconnect Detection
+
+The dialect implements `is_disconnect()` which detects connection failures by:
+
+1. **Message matching** — checks error messages for known disconnect patterns (e.g., "connection is closed", "broker is not available", "connection reset")
+2. **Error code matching** — checks for CUBRID CCI error codes like `CAS_ER_COMMUNICATION` (-21003)
+
+When a disconnect is detected, SQLAlchemy automatically invalidates the connection and creates a new one from the pool.
+
+### Error Code Mapping
+
+CUBRID driver exceptions are mapped to appropriate SQLAlchemy exception types. The driver exposes a limited exception hierarchy:
+
+| CUBRID Driver Exception | SA Exception Mapping |
+|---|---|
+| `Error` (base) | `DBAPIError` |
+| `InterfaceError` | `InterfaceError` |
+| `DatabaseError` | `DatabaseError` |
+| `NotSupportedError` | `NotSupportedError` |
+
+> **Note**: CUBRIDdb does not provide `OperationalError`, `ProgrammingError`, `InternalError`, or `DataError`. All database-level errors are raised as `DatabaseError`.
+
+### Pool Configuration Recommendations
+
+| Scenario | `pool_size` | `pool_recycle` | `pool_pre_ping` |
+|---|---|---|---|
+| Development | 2 | -1 (disabled) | False |
+| Web application | 5–10 | 1800 | True |
+| High-concurrency | 10–20 | 900 | True |
+| Background workers | 2–5 | 600 | True |
+
+### NullPool for Short-Lived Scripts
+
+For scripts or one-off tasks, disable pooling entirely:
+
+```python
+from sqlalchemy.pool import NullPool
+
+engine = create_engine(
+    "cubrid://dba@localhost:33000/testdb",
+    poolclass=NullPool,
+)
+```
+
+---
+
 *See also: [Isolation Levels](ISOLATION_LEVELS.md) · [Type Mapping](TYPES.md) · [Feature Support](FEATURE_SUPPORT.md)*

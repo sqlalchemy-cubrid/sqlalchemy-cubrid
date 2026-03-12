@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-03-12
+
+### Added
+- **Error code mapping**: `is_disconnect()` detects dropped connections via string-based message
+  matching (14 patterns) and numeric CUBRID CCI error codes (-21003, -21005, -10005, -10007).
+- **`_extract_error_code()`**: Extracts numeric error codes from CUBRID DBAPI exceptions
+  (supports both integer args and string-embedded codes like "-21003 message").
+- **`do_ping()`**: Connection liveness check using CUBRID Python driver's native `ping()`
+  method — enables SQLAlchemy's `pool_pre_ping` feature.
+- **Connection pool tuning guide**: `docs/CONNECTION.md` expanded with pool configuration
+  recommendations (`pool_size`, `pool_recycle`, `pool_pre_ping`), CUBRID broker timeout
+  interaction, disconnect detection, and error code mapping documentation.
+- **CUBRID-Python driver compatibility matrix**: `docs/DRIVER_COMPAT.md` documenting tested
+  driver versions, CUBRID server compatibility, and known issues.
+- **Python 3.14 support**: Added to CI matrix and `pyproject.toml` classifiers.
+- **44 new offline tests**: Comprehensive coverage for `is_disconnect()` (14 message patterns,
+  4 error codes, edge cases), `_extract_error_code()` (7 tests), `do_ping()` (2 tests),
+  `postfetch_lastrowid` validation (5 tests), and disconnect message integrity (3 tests).
+
+### Changed
+- CI integration test matrix expanded: Python {3.10, 3.12, 3.14} × CUBRID {11.4, 11.2, 11.0, 10.2}.
+- `pyproject.toml`: Added `Programming Language :: Python :: 3.14` classifier.
+
+
 ## [1.2.2] - 2026-03-12
 
 ### Added

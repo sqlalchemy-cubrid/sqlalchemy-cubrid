@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import re
+from typing import Optional
 
 from sqlalchemy import types as sqltypes
 from sqlalchemy.engine import default, reflection
@@ -600,6 +601,85 @@ class CubridDialect(default.DefaultDialect):
     def do_release_savepoint(self, connection, name):
         """CUBRID does not support RELEASE SAVEPOINT; no-op."""
         pass
+
+    # ----- Error handling & connection health -----
+
+    # Disconnect message patterns (lowercase) for is_disconnect().
+    # Modeled after psycopg2's string-based approach since CUBRIDdb has
+    # only Error, InterfaceError, DatabaseError, and NotSupportedError.
+    _disconnect_messages = (
+        "connection is closed",
+        "closed connection",
+        "lost connection",
+        "server has gone away",
+        "connection reset",
+        "broken pipe",
+        "cannot communicate with the broker",
+        "received invalid packet",
+        "broker is not available",
+        "communication error",
+        "connection timed out",
+        "connection refused",
+        "connection was killed",
+        "failed to connect",
+    )
+
+    def is_disconnect(self, e, connection, cursor):
+        """Return True if *e* indicates a dropped connection.
+
+        CUBRID's Python driver exposes a limited exception hierarchy:
+        ``Error``, ``InterfaceError``, ``DatabaseError``, and
+        ``NotSupportedError``.  There is no ``OperationalError`` class,
+        so we rely primarily on string-based message matching (similar
+        to psycopg2) supplemented by known numeric error codes.
+        """
+        if isinstance(e, self.dbapi.Error):
+            msg = str(e).lower()
+            for pattern in self._disconnect_messages:
+                if pattern in msg:
+                    return True
+
+            # Check numeric error code for known disconnect codes
+            error_code = self._extract_error_code(e)
+            if error_code is not None and error_code in (
+                -21003,  # CAS_ER_COMMUNICATION
+                -21005,  # CAS_ER_COMMUNICATION (alternate)
+                -10005,  # ER_NET_CANT_CONNECT
+                -10007,  # ER_NET_SERVER_COMM_ERROR
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def _extract_error_code(exception) -> Optional[int]:
+        """Extract a numeric error code from a CUBRID DBAPI exception.
+
+        CUBRIDdb stores the error code in ``exception.args[0]``.
+        Returns ``None`` if no numeric code can be extracted.
+        """
+        if exception.args:
+            first_arg = exception.args[0]
+            if isinstance(first_arg, int):
+                return first_arg
+            # Some errors embed the code at the start: "-21003 ..."
+            if isinstance(first_arg, str):
+                parts = first_arg.split(None, 1)
+                if parts:
+                    try:
+                        return int(parts[0])
+                    except (ValueError, IndexError):
+                        pass
+        return None
+
+    def do_ping(self, dbapi_connection):
+        """Ping the server to check connection liveness.
+
+        Used by SQLAlchemy's ``pool_pre_ping`` feature.  The CUBRID
+        Python driver exposes a ``ping()`` method on the connection
+        that delegates to the C-level CCI ping.
+        """
+        dbapi_connection.ping()
+        return True
 
 
 dialect = CubridDialect

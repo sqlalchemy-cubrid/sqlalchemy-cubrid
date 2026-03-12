@@ -324,3 +324,86 @@ class TestIsolationLevel:
             dialect.set_isolation_level(raw_conn, "SERIALIZABLE")
             new_level = dialect.get_isolation_level(raw_conn)
             assert new_level is not None
+
+
+class TestDoPing:
+    def test_ping_success(self, engine):
+        """do_ping() succeeds on a live connection."""
+        with engine.connect() as conn:
+            raw_conn = conn.connection.dbapi_connection
+            dialect = engine.dialect
+            result = dialect.do_ping(raw_conn)
+            assert result is True
+
+    def test_pool_pre_ping(self):
+        """Engine with pool_pre_ping=True works correctly."""
+        eng = create_engine(_cubrid_url(), pool_pre_ping=True, echo=False)
+        try:
+            with eng.connect() as conn:
+                result = conn.execute(text("SELECT 1")).scalar()
+            assert result == 1
+        finally:
+            eng.dispose()
+
+
+class TestIsDisconnect:
+    def test_is_disconnect_with_non_disconnect_error(self, engine):
+        """is_disconnect() returns False for normal database errors."""
+        dialect = engine.dialect
+        with engine.connect() as conn:
+            raw_conn = conn.connection.dbapi_connection
+            try:
+                cursor = raw_conn.cursor()
+                cursor.execute("SELECT * FROM nonexistent_table_xyz_12345")
+            except Exception as e:
+                assert dialect.is_disconnect(e, conn, None) is False
+
+    def test_is_disconnect_returns_false_for_runtime_error(self, engine):
+        """is_disconnect() returns False for non-DBAPI errors."""
+        dialect = engine.dialect
+        exc = RuntimeError("some random error")
+        assert dialect.is_disconnect(exc, None, None) is False
+
+
+class TestPostfetchLastRowId:
+    def test_lastrowid_consistency(self, engine, metadata):
+        """Verify lastrowid returns consistent IDs across inserts."""
+        users = metadata.tables["integration_users"]
+        ids = []
+        with Session(engine) as session:
+            for i in range(3):
+                result = session.execute(users.insert().values(name=f"lastrowid_test_{i}"))
+                ids.append(result.inserted_primary_key[0])
+            session.commit()
+
+        assert len(ids) == 3
+        assert all(isinstance(pk, int) for pk in ids)
+        assert ids[0] < ids[1] < ids[2], "IDs should be monotonically increasing"
+
+
+class TestConnectionPool:
+    def test_pool_recycle(self):
+        """Engine with pool_recycle works without errors."""
+        eng = create_engine(_cubrid_url(), pool_recycle=60, echo=False)
+        try:
+            with eng.connect() as conn:
+                result = conn.execute(text("SELECT 1")).scalar()
+            assert result == 1
+        finally:
+            eng.dispose()
+
+    def test_multiple_connections(self):
+        """Multiple connections from pool work correctly."""
+        eng = create_engine(_cubrid_url(), pool_size=3, echo=False)
+        try:
+            conns = []
+            for _ in range(3):
+                c = eng.connect()
+                conns.append(c)
+            for c in conns:
+                result = c.execute(text("SELECT 1")).scalar()
+                assert result == 1
+            for c in conns:
+                c.close()
+        finally:
+            eng.dispose()
