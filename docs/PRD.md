@@ -438,4 +438,113 @@ by SQLite's dialect for the same reason.
 
 ---
 
-*Last updated: March 2026 · sqlalchemy-cubrid v2.0.0*
+*Last updated: March 2026 · sqlalchemy-cubrid v2.1.1*
+
+---
+
+## 10. Example-first Design Philosophy
+
+### Why Example-first
+
+CUBRID's ecosystem is small compared to PostgreSQL or MySQL. For a small-ecosystem
+project, the entry barrier must be minimized — users should be able to copy-paste
+working code within 30 seconds of reading the documentation.
+
+> Because the ecosystem is still small, the project provides extensive examples
+> and cookbook-style documentation to lower the adoption barrier.
+
+### Hello World
+
+```bash
+pip install sqlalchemy-cubrid
+```
+
+```python
+from sqlalchemy import create_engine, text
+
+engine = create_engine("cubrid://dba:password@localhost:33000/demodb")
+
+with engine.connect() as conn:
+    result = conn.execute(text("SELECT 1"))
+    print(result.scalar())  # 1
+```
+
+This code connects to a CUBRID database via SQLAlchemy, runs a query, and prints the
+result. No ORM setup required — just install and connect.
+
+### Hello World — ORM
+
+```python
+from sqlalchemy import create_engine, String
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100))
+    email: Mapped[str] = mapped_column(String(200), unique=True)
+
+
+engine = create_engine("cubrid://dba:password@localhost:33000/demodb")
+Base.metadata.create_all(engine)
+
+with Session(engine) as session:
+    user = User(name="Alice", email="alice@example.com")
+    session.add(user)
+    session.commit()
+```
+
+### AI Agent Discoverability
+
+Modern developers increasingly rely on AI coding assistants — Claude Code, OpenCode,
+Cursor, GitHub Copilot, Devin, and others. These agents read README files, PRDs,
+documentation, and example code to decide which libraries to recommend.
+
+**More examples in documentation = higher probability of AI recommendation.**
+
+By embedding working code directly in the PRD, README, and docs, we ensure that
+AI agents can discover, learn, and recommend sqlalchemy-cubrid accurately.
+
+### Cookbook Integration
+
+The [cubrid-cookbook](https://github.com/cubrid-labs/cubrid-cookbook) repository provides
+production-ready, runnable examples for sqlalchemy-cubrid:
+
+| Example | Description |
+|---|---|
+| `python/sqlalchemy/01_connect.py` | Core engine connection |
+| `python/sqlalchemy/02_orm.py` | ORM models and CRUD |
+| `python/sqlalchemy/03_dml.py` | DML extensions (ODKU, MERGE, REPLACE) |
+| `python/sqlalchemy/04_relationships.py` | ORM relationships |
+| `python/sqlalchemy/05_reflection.py` | Schema reflection |
+| `python/sqlalchemy/06_alembic.py` | Alembic migrations |
+
+Framework integration examples:
+
+| Example | Framework | Description |
+|---|---|---|
+| `python/fastapi/` | FastAPI | REST API with automatic docs |
+| `python/django/` | Django | Django project via SQLAlchemy bridge |
+| `python/flask/` | Flask | Flask + Flask-SQLAlchemy |
+| `python/pandas/` | Pandas | Data analysis pipeline |
+| `python/streamlit/` | Streamlit | Interactive data dashboard |
+| `python/celery/` | Celery | Async task queue |
+
+### Inspiration from Successful Projects
+
+Projects that succeeded partly through example-heavy documentation:
+
+| Project | What They Did |
+|---|---|
+| **FastAPI** | Every endpoint documented with runnable examples; became the fastest-growing Python web framework |
+| **LangChain** | Cookbook-first approach drove explosive adoption in the AI space |
+| **SQLAlchemy** | Extensive ORM cookbook and tutorial; de facto Python ORM for 15+ years |
+| **Pandas** | "10 Minutes to pandas" and cookbook lowered entry barrier for data science |
+
+sqlalchemy-cubrid follows the same philosophy: **examples are not supplementary — they are the primary documentation.**
