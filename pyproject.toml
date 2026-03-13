@@ -46,9 +46,9 @@ pycubrid = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid"
-Repository = "https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid"
-Documentation = "https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid/tree/main/docs"
+Homepage = "https://github.com/cubrid-labs/sqlalchemy-cubrid"
+Repository = "https://github.com/cubrid-labs/sqlalchemy-cubrid"
+Documentation = "https://github.com/cubrid-labs/sqlalchemy-cubrid/tree/main/docs"
 
 [project.entry-points."sqlalchemy.dialects"]
 cubrid = "sqlalchemy_cubrid.dialect:CubridDialect"

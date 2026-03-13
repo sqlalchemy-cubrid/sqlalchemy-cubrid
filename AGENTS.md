@@ -58,7 +58,7 @@ cubrid = "sqlalchemy_cubrid.alembic_impl:CubridImpl"
 ### Setup
 
 ```bash
-git clone https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid.git
+git clone https://github.com/cubrid-labs/sqlalchemy-cubrid.git
 cd sqlalchemy-cubrid
 make install          # pip install -e ".[dev]" + pytest-cov + pre-commit + tox
 ```

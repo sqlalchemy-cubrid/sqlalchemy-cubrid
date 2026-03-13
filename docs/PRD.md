@@ -5,7 +5,7 @@
 **Project**: sqlalchemy-cubrid
 **Current Version**: 2.0.0
 **Status**: Production-ready (revived from abandoned 0.0.1)
-**Repository**: [github.com/sqlalchemy-cubrid/sqlalchemy-cubrid](https://github.com/sqlalchemy-cubrid/sqlalchemy-cubrid)
+**Repository**: [github.com/cubrid-labs/sqlalchemy-cubrid](https://github.com/cubrid-labs/sqlalchemy-cubrid)
 **License**: MIT
 
 ### 1.1 Problem Statement (Original)
