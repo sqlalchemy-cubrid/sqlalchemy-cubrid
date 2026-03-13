@@ -1,0 +1,46 @@
+name: badge-sync bot
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - 'pyproject.toml'
+      - '.github/workflows/*.yml'
+      - 'LICENSE'
+      - 'badgesync.config.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  badge-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yeongseon/badge-sync@v1
+        with:
+          command: apply
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create Pull Request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: 'chore: sync README badges'
+          title: 'chore: sync README badges'
+          body: |
+            Automated badge sync by [badge-sync](https://github.com/yeongseon/badge-sync).
+            This PR updates the badge block to match current project metadata.
+          branch: badge-sync/update
+          delete-branch: true
+          labels: badges, automated
