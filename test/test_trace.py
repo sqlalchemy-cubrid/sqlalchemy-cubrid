@@ -163,7 +163,7 @@ class TestTraceQuery:
         # The last call should be a text() object containing SET TRACE OFF
         last_call = conn.execute.call_args_list[-1]
         last_arg = last_call[0][0]
-        assert hasattr(last_arg, 'text')
+        assert hasattr(last_arg, "text")
         assert last_arg.text == "SET TRACE OFF"
 
     def test_trace_query_multiple_trace_rows(self):

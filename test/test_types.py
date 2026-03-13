@@ -191,6 +191,7 @@ class TestTypeInstantiation:
         t = OBJECT()
         assert isinstance(t, sqltypes.TypeEngine)
 
+
 class TestCollectionTypes:
     """Test SET, MULTISET, SEQUENCE (CUBRID collection types)."""
 

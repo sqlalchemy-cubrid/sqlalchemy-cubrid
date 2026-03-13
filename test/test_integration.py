@@ -421,9 +421,7 @@ class TestReplaceIntegration:
             conn.execute(stmt)
 
         with engine.connect() as conn:
-            row = conn.execute(
-                users.select().where(users.c.name == "ReplaceNew")
-            ).fetchone()
+            row = conn.execute(users.select().where(users.c.name == "ReplaceNew")).fetchone()
         assert row is not None
         assert row.email == "replace@example.com"
 
@@ -453,10 +451,7 @@ class TestRecursiveCTEIntegration:
         """WITH RECURSIVE generates a sequence in CUBRID 11.x+."""
         from sqlalchemy import column as col_func, literal as lit_func
 
-        cte = (
-            select(lit_func(1).label("n"))
-            .cte(name="nums", recursive=True)
-        )
+        cte = select(lit_func(1).label("n")).cte(name="nums", recursive=True)
         cte_alias = cte.alias("a")
         cte = cte.union_all(
             select(col_func("n") + 1).select_from(cte_alias).where(col_func("n") < 5)

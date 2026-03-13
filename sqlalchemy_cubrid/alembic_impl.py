@@ -44,7 +44,9 @@ import sqlalchemy as sa
 try:
     from alembic.ddl.impl import DefaultImpl
 except ImportError:  # pragma: no cover — optional dependency
-    raise ImportError("Alembic is required for migration support. Install it with: pip install sqlalchemy-cubrid[alembic]") from None
+    raise ImportError(
+        "Alembic is required for migration support. Install it with: pip install sqlalchemy-cubrid[alembic]"
+    ) from None
 
 if TYPE_CHECKING:
     from typing import Protocol
@@ -107,7 +109,9 @@ class CubridImpl(DefaultImpl):
         args = ", ".join(rendered_values)
         return f"cubrid_types.{type_name}({args})"
 
-    def compare_type(self, inspector_column: sa.Column[Any], metadata_column: sa.Column[Any]) -> bool:
+    def compare_type(
+        self, inspector_column: sa.Column[Any], metadata_column: sa.Column[Any]
+    ) -> bool:
         inspector_type = inspector_column.type
         metadata_type = metadata_column.type
 
