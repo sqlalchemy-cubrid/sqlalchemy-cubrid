@@ -1,6 +1,6 @@
 # sqlalchemy-cubrid
 
-**CUBRID dialect for SQLAlchemy 2.0+**
+**SQLAlchemy 2.0 dialect for the CUBRID database** — Python ORM, schema reflection, Alembic migrations, and full type system support.
 
 [🇰🇷 한국어](docs/README.ko.md) · [🇺🇸 English](README.md) · [🇨🇳 中文](docs/README.zh.md) · [🇮🇳 हिन्दी](docs/README.hi.md) · [🇩🇪 Deutsch](docs/README.de.md) · [🇷🇺 Русский](docs/README.ru.md)
 
@@ -131,6 +131,45 @@ with Session(engine) as session:
 | **CUBRID 11.2** | ✅ | -- | ✅ | -- |
 | **CUBRID 11.0** | ✅ | -- | ✅ | -- |
 | **CUBRID 10.2** | ✅ | -- | ✅ | -- |
+
+## FAQ
+
+### How do I connect to CUBRID with SQLAlchemy?
+
+```python
+from sqlalchemy import create_engine
+engine = create_engine("cubrid://dba:password@localhost:33000/demodb")
+```
+
+For the pure Python driver (no C build needed): `create_engine("cubrid+pycubrid://dba@localhost:33000/demodb")`
+
+### Does sqlalchemy-cubrid support SQLAlchemy 2.0?
+
+Yes. sqlalchemy-cubrid is built for SQLAlchemy 2.0+ and supports the new 2.0-style API including `Session.execute()`, typed `Mapped[]` columns, and statement caching.
+
+### Does sqlalchemy-cubrid support Alembic migrations?
+
+Yes. Install with `pip install "sqlalchemy-cubrid[alembic]"`. The dialect auto-registers via entry point. Note that CUBRID auto-commits DDL, so migrations are not transactional.
+
+### What Python versions are supported?
+
+Python 3.10, 3.11, 3.12, and 3.13.
+
+### Does CUBRID support RETURNING clauses?
+
+No. CUBRID does not support `INSERT ... RETURNING` or `UPDATE ... RETURNING`. Use `cursor.lastrowid` or `SELECT LAST_INSERT_ID()` instead.
+
+### How do I use ON DUPLICATE KEY UPDATE with CUBRID?
+
+```python
+from sqlalchemy_cubrid import insert
+stmt = insert(users).values(name="Alice").on_duplicate_key_update(name="Alice Updated")
+```
+
+### What's the difference between `cubrid://` and `cubrid+pycubrid://`?
+
+`cubrid://` uses the C-extension driver (CUBRIDdb) which requires compilation. `cubrid+pycubrid://` uses the pure Python driver which installs with pip alone — no build tools needed.
+
 
 ## Contributing
 
