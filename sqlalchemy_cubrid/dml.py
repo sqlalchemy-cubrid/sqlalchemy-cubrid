@@ -22,7 +22,7 @@ from sqlalchemy.sql.base import (
 )
 from sqlalchemy.sql.dml import Insert as StandardInsert
 from sqlalchemy.sql.elements import ClauseElement, KeyedColumnElement
-from sqlalchemy.sql.expression import alias
+from sqlalchemy.sql.expression import Executable, alias
 from sqlalchemy.sql.selectable import NamedFromClause
 from sqlalchemy.util.typing import Self
 
@@ -175,7 +175,7 @@ def merge(target: _DMLTableArgument) -> Merge:
     return Merge(target)
 
 
-class Merge(ClauseElement, Generative):
+class Merge(Executable, ClauseElement, Generative):
     __visit_name__ = "merge"
     stringify_dialect = "cubrid"
 
