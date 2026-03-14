@@ -110,6 +110,7 @@ with Session(engine) as session:
 | [ORM कुकबुक](ORM_COOKBOOK.md) | व्यावहारिक ORM उदाहरण, रिलेशनशिप, क्वेरी |
 | [डेवलपमेंट](DEVELOPMENT.md) | डेव सेटअप, टेस्टिंग, Docker, कवरेज, CI/CD |
 | [ड्राइवर अनुकूलता](DRIVER_COMPAT.md) | CUBRID-Python ड्राइवर संस्करण और ज्ञात समस्याएँ |
+| [समस्या निवारण](TROUBLESHOOTING.md) | सामान्य समस्याएँ, त्रुटि समाधान, डिबगिंग तकनीकें |
 
 ## अनुकूलता
 

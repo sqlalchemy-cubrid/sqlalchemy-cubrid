@@ -121,6 +121,7 @@ with Session(engine) as session:
 | [ORM Cookbook](docs/ORM_COOKBOOK.md) | Practical ORM examples, relationships, queries |
 | [Development](docs/DEVELOPMENT.md) | Dev setup, testing, Docker, coverage, CI/CD |
 | [Driver Compatibility](docs/DRIVER_COMPAT.md) | CUBRID-Python driver versions and known issues |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues, error solutions, debugging techniques |
 
 ## Compatibility
 

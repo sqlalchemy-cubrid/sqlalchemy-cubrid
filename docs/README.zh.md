@@ -109,6 +109,7 @@ with Session(engine) as session:
 | [ORM 指南](ORM_COOKBOOK.md) | 实用 ORM 示例、关系、查询 |
 | [开发指南](DEVELOPMENT.md) | 开发设置、测试、Docker、覆盖率、CI/CD |
 | [驱动兼容性](DRIVER_COMPAT.md) | CUBRID-Python 驱动版本和已知问题 |
+| [故障排除](TROUBLESHOOTING.md) | 常见问题、错误解决方案、调试技巧 |
 
 ## 兼容性
 

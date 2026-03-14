@@ -214,6 +214,8 @@ The dialect translates automatically in `create_connect_args()`.
 | `CHANGELOG.md` | Release history (Keep a Changelog format) |
 | `CONTRIBUTING.md` | Contribution guidelines |
 | `SECURITY.md` | Security vulnerability reporting |
+| `docs/DRIVER_COMPAT.md` | CUBRID-Python driver versions and known issues |
+| `docs/TROUBLESHOOTING.md` | Common issues, error solutions, debugging techniques |
 
 ## Commit Convention
 

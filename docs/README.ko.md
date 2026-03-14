@@ -117,6 +117,7 @@ with Session(engine) as session:
 | [ORM 활용 가이드](ORM_COOKBOOK.md) | 실용적인 ORM 예제, 관계, 쿼리 |
 | [개발 가이드](DEVELOPMENT.md) | 개발 환경 설정, 테스트, Docker, 커버리지, CI/CD |
 | [드라이버 호환성](DRIVER_COMPAT.md) | CUBRID-Python 드라이버 버전 및 알려진 이슈 |
+| [문제 해결](TROUBLESHOOTING.md) | 일반적인 문제, 오류 해결, 디버깅 기법 |
 
 ## 호환성
 

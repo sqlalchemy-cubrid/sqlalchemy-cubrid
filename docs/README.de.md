@@ -110,6 +110,7 @@ with Session(engine) as session:
 | [ORM-Kochbuch](ORM_COOKBOOK.md) | Praktische ORM-Beispiele, Beziehungen, Abfragen |
 | [Entwicklung](DEVELOPMENT.md) | Entwicklungsumgebung, Tests, Docker, Abdeckung, CI/CD |
 | [Treiberkompatibilität](DRIVER_COMPAT.md) | CUBRID-Python Treiberversionen und bekannte Probleme |
+| [Fehlerbehebung](TROUBLESHOOTING.md) | Häufige Probleme, Fehlerlösungen, Debugging-Techniken |
 
 ## Kompatibilität
 
