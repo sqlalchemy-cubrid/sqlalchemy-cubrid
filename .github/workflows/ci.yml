@@ -72,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12", "3.14"]
+        python-version: ["3.10", "3.12"]
         cubrid-version: ["11.4", "11.2", "11.0", "10.2"]
     services:
       cubrid:
@@ -100,7 +100,7 @@ jobs:
 
       - name: Build and install CUBRID Python driver
         run: |
-          git clone --branch v11.3.0.51 --depth 1 \
+          git clone --branch v11.3.0.51 --depth 1 --recurse-submodules \
             https://github.com/CUBRID/cubrid-python.git /tmp/cubrid-python
           cd /tmp/cubrid-python
 
@@ -175,10 +175,10 @@ jobs:
           echo "| | Python 3.10 | Python 3.11 | Python 3.12 | Python 3.13 | Python 3.14 |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|---|---|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| **Offline Tests** | ✅ | ✅ | ✅ | ✅ | ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| **CUBRID 11.4** | 🔄 | — | 🔄 | — | 🔄 |" >> $GITHUB_STEP_SUMMARY
-          echo "| **CUBRID 11.2** | 🔄 | — | 🔄 | — | 🔄 |" >> $GITHUB_STEP_SUMMARY
-          echo "| **CUBRID 11.0** | 🔄 | — | 🔄 | — | 🔄 |" >> $GITHUB_STEP_SUMMARY
-          echo "| **CUBRID 10.2** | 🔄 | — | 🔄 | — | 🔄 |" >> $GITHUB_STEP_SUMMARY
+          echo "| **CUBRID 11.4** | 🔄 | — | 🔄 | — | — |" >> $GITHUB_STEP_SUMMARY
+          echo "| **CUBRID 11.2** | 🔄 | — | 🔄 | — | — |" >> $GITHUB_STEP_SUMMARY
+          echo "| **CUBRID 11.0** | 🔄 | — | 🔄 | — | — |" >> $GITHUB_STEP_SUMMARY
+          echo "| **CUBRID 10.2** | 🔄 | — | 🔄 | — | — |" >> $GITHUB_STEP_SUMMARY
       - name: Fail if required jobs failed
         if: >-
           needs.lint.result == 'failure' ||

@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: yeongseon/badge-sync@v1
+      - uses: yeongseon/badge-sync@v0.4.0
         with:
           command: apply
       - name: Check for changes
