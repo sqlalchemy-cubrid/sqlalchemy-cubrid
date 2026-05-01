@@ -518,9 +518,13 @@ class CubridTypeCompiler(compiler.GenericTypeCompiler):
         return compiled
 
     def visit_datetime(self, type_: Any, **kw: Any) -> str:
+        if getattr(type_, 'timezone', False):
+            return "DATETIMETZ"
         return "DATETIME"
 
     def visit_DATETIME(self, type_: Any, **kw: Any) -> str:
+        if getattr(type_, 'timezone', False):
+            return "DATETIMETZ"
         return "DATETIME"
 
     def visit_DATE(self, type_: Any, **kw: Any) -> str:
@@ -530,6 +534,8 @@ class CubridTypeCompiler(compiler.GenericTypeCompiler):
         return "TIME"
 
     def visit_TIMESTAMP(self, type_: Any, **kw: Any) -> str:
+        if getattr(type_, 'timezone', False):
+            return "TIMESTAMPLTZ"
         return "TIMESTAMP"
 
     def visit_VARCHAR(self, type_: Any, **kw: Any) -> str:
