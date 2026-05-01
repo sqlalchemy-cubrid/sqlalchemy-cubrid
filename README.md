@@ -153,6 +153,8 @@ async with AsyncSession(engine) as session:
 - **DDL auto-commits** — migrations are not transactional (`transactional_ddl = False`)
 - **SQLAlchemy 2.0–2.1 only** — pinned to `<2.2` due to internal API dependencies ([details](docs/ARCHITECTURE.md))
 - **Async requires pycubrid >= 1.3.2,<2.0** — the `cubrid+aiopycubrid://` driver needs the async-capable pycubrid package line currently supported by this project
+- **CARDINALITY() broken** — `func.cardinality()` raises `CompileError` with workaround guidance; the CUBRID server has a [known bug](https://github.com/cubrid-lab/.github/issues/3)
+- **Reserved words auto-quoted** — Column names matching CUBRID reserved words (`day`, `count`, `value`, etc.) are automatically double-quoted in DDL; see [reserved word list](https://github.com/cubrid-lab/.github/issues/5)
 
 ## Documentation
 
