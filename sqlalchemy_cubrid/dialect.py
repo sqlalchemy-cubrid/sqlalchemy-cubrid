@@ -134,7 +134,11 @@ ischema_names = {
     "DATE": DATE,
     "TIME": TIME,
     "TIMESTAMP": TIMESTAMP,
+    "TIMESTAMPTZ": TIMESTAMP,
+    "TIMESTAMPLTZ": TIMESTAMP,
     "DATETIME": DATETIME,
+    "DATETIMETZ": DATETIME,
+    "DATETIMELTZ": DATETIME,
     # Bit Strings
     "BIT": BIT,
     "BIT VARYING": BIT,
