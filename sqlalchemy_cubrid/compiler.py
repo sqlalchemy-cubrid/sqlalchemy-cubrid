@@ -33,6 +33,18 @@ class CubridCompiler(compiler.SQLCompiler):
     def visit_utc_timestamp_func(self, fn: Any, **kw: Any) -> str:
         return "UTC_TIMESTAMP()"
 
+    def visit_cardinality_func(self, fn: Any, **kw: Any) -> str:
+        """Raise clear error for CARDINALITY() which is broken in CUBRID 11.x.
+
+        CUBRID documents CARDINALITY() but the server returns runtime errors.
+        See: https://github.com/cubrid-lab/.github/issues/3
+        """
+        raise CompileError(
+            "CUBRID does not support CARDINALITY() at runtime (server bug). "
+            "Workaround: use a subquery with COUNT(*) after unnesting the "
+            "collection via TABLE(column), e.g.: "
+            "SELECT (SELECT COUNT(*) FROM TABLE(t.tags) AS u) FROM t"
+        )
     def visit_group_concat_func(self, fn: Any, **kw: Any) -> str:
         """Render GROUP_CONCAT aggregate function.
 
