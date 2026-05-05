@@ -54,7 +54,7 @@ This phase describes the transformation of SQLAlchemy Expression Language constr
 sequenceDiagram
     participant App
     participant SA as SQLAlchemy Core
-    participant Compiler as CubridSQLCompiler
+    participant Compiler as CubridCompiler
     participant TypeCompiler as CubridTypeCompiler
     participant Driver as pycubrid
     participant CAS as CAS Process
@@ -130,6 +130,7 @@ flowchart TD
     compiler["compiler.py<br/>SQL, DDL, Type compilers"]
     base["base.py<br/>ExecutionContext, IdentifierPreparer"]
     dml["dml.py<br/>ODKU, MERGE, REPLACE constructs"]
+    compat["_compat.py<br/>SQLAlchemy compatibility helpers"]
     types["types.py<br/>CUBRID type system"]
     trace_mod["trace.py<br/>Query tracing utility"]
     req["requirements.py<br/>SA test requirement flags"]
@@ -144,6 +145,7 @@ flowchart TD
     aio_pycubrid_d --> pycubrid_d
     compiler --> types
     compiler --> base
+    compiler --> compat
     trace_mod --> dialect
     
     %% External dependencies
@@ -165,7 +167,7 @@ flowchart TD
 Defines the public API boundary, exporting CUBRID-specific types and DML extensions like `insert()`, `merge()`, and `replace()`. It serves as the primary entry point for users of the dialect.
 
 #### `dialect.py`
-Contains the base `CubridDialect` class, implementing core logic for schema reflection, connection management, and transaction isolation levels. It defaults to the C-extension driver `CUBRIDdb`.
+Contains the base `CubridDialect` class, implementing core logic for schema reflection, connection management, and transaction isolation levels. Reflection (`get_columns`, `get_indexes`, `get_foreign_keys`, `get_pk_constraint`, `get_unique_constraints`) is implemented here. It defaults to the C-extension driver `CUBRIDdb`.
 
 #### `pycubrid_dialect.py`
 Implements the `PyCubridDialect` variant, which uses the pure Python `pycubrid` driver. It overrides connection argument parsing and connection-time initialization logic.
@@ -175,6 +177,9 @@ Implements `PyCubridAsyncDialect`, the async dialect variant used by `cubrid+aio
 
 #### `compiler.py`
 Houses the SQL, DDL, and Type compilers. It translates SQLAlchemy's abstract syntax trees into CUBRID-specific SQL dialects, handling nuances like LIMIT/OFFSET and FOR UPDATE clauses.
+
+#### `_compat.py`
+Provides narrow compatibility shims around SQLAlchemy attributes and behavior that are not fully public APIs (`_for_update_arg`, `_limit_clause`, `_offset_clause`, and typed bind recreation helpers), so compiler logic can stay centralized and easier to adapt across SQLAlchemy releases.
 
 #### `base.py`
 Provides the `CubridExecutionContext` for statement execution state and the `CubridIdentifierPreparer` for handling CUBRID's lowercase identifier folding and quoting rules.
