@@ -152,8 +152,11 @@ class CubridCompiler(compiler.SQLCompiler):
         extra_froms: Any,
         from_hints: Any,
         **kw: Any,
-    ) -> None:
-        return None
+    ) -> str:
+        raise CompileError(
+            "CUBRID does not support UPDATE ... FROM (multi-table UPDATE). "
+            "Use a subquery in the SET clause instead."
+        )
 
     def visit_on_duplicate_key_update(self, on_duplicate: Any, **kw: Any) -> str:
         """Render ON DUPLICATE KEY UPDATE clause.

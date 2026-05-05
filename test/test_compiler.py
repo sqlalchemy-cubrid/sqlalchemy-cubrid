@@ -215,9 +215,8 @@ class TestMultiTableUpdateCompilation:
         t2 = sa.table("t2", sa.column("id"), sa.column("rate"))
 
         stmt = t1.update().where(t1.c.id == t2.c.id).values(val=t2.c.rate)
-        sql = _compile(stmt)
-
-        assert sql == "UPDATE t1, t2 SET val=t2.rate WHERE t1.id = t2.id"
+        with pytest.raises(CompileError, match=r"UPDATE \.\.\. FROM"):
+            _compile(stmt)
 
     def test_cast_with_none_type(self):
         """Test cast when typeclause returns None."""
@@ -812,6 +811,14 @@ class TestUpdateCompilation:
         sql = _compile(stmt)
         assert "UPDATE" in sql
 
+    def test_update_from_raises_compile_error(self):
+        t1 = sa.table("t1", sa.column("id"), sa.column("val"))
+        t2 = sa.table("t2", sa.column("id"), sa.column("rate"))
+        stmt = t1.update().values(val=t2.c.rate).where(t1.c.id == t2.c.id)
+
+        with pytest.raises(CompileError, match=r"UPDATE \.\.\. FROM"):
+            stmt.compile(dialect=CubridDialect())
+
 
 class TestOnDuplicateKeyUpdateCompilation:
     """Test ON DUPLICATE KEY UPDATE compilation."""
@@ -1386,8 +1393,7 @@ class TestCoverageEdgeCases:
         sql = _compile(stmt)
         assert "LIMIT" not in sql
 
-    def test_update_from_clause_returns_none(self):
-        """compiler.py line 110: update_from_clause always returns None."""
+    def test_update_from_clause_raises_compile_error(self):
         from sqlalchemy import update
 
         # Multi-table update — triggers update_from_clause
@@ -1399,8 +1405,8 @@ class TestCoverageEdgeCases:
             extend_existing=True,
         )
         stmt = update(users).values(name="test").where(users.c.id == orders.c.user_id)
-        sql = _compile(stmt)
-        assert "UPDATE" in sql
+        with pytest.raises(CompileError, match=r"UPDATE \.\.\. FROM"):
+            _compile(stmt)
 
     def test_on_duplicate_key_update_table_none(self):
         """compiler.py line 124: visit_on_duplicate_key_update when table is None."""
