@@ -601,10 +601,16 @@ class CubridDialect(default.DefaultDialect):
         schema: str | None = None,
         **kw: Any,
     ) -> list[ReflectedCheckConstraint]:
-        """Return check constraints for *table_name*."""
-        # CUBRID parses CHECK constraint syntax but does not enforce them
-        # at runtime (official CUBRID behavior). Reflecting them would be
-        # misleading, so we return an empty list.
+        """Return check constraints for *table_name*.
+
+        CUBRID parses CHECK constraint syntax but does not enforce them
+        at runtime (official CUBRID behavior). Reflecting them would be
+        misleading, so we return an empty list.
+        """
+        log.debug(
+            "get_check_constraints(%s): returning empty — CUBRID does not enforce CHECK constraints",
+            table_name,
+        )
         return []
 
     @reflection.cache
