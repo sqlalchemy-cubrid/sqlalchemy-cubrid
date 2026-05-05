@@ -1,79 +1,42 @@
-# SQLAlchemy Private API Compatibility
+# SQLAlchemy Internal API Compatibility
 
-This document inventories all SQLAlchemy internal/private API usages in
-sqlalchemy-cubrid and outlines the plan for SA 2.2 compatibility.
+This document tracks every SQLAlchemy internal or semi-private API used by
+`sqlalchemy-cubrid`, why it is used, the SQLAlchemy version range verified by
+tests, and what would break if SQLAlchemy changes the API.
 
-## Why `sqlalchemy>=2.0,<2.2`?
+Verified against: SQLAlchemy `2.0.x` and `2.1.x` (project pin: `>=2.0,<2.2`).
 
-sqlalchemy-cubrid depends on three SQLAlchemy compiler internals:
-`_for_update_arg`, `_limit_clause`, and `_offset_clause`.
-Earlier private dependencies for literal detection and typed bind recreation
-have already been moved behind local helpers in `_compat.py`. The remaining
-three attributes still have no stable public alternative as of the current
-SQLAlchemy documentation. Therefore, SQLAlchemy 2.2+ compatibility is not
-guaranteed without separate verification, and a conservative `<2.2` upper
-bound is maintained.
+## Internal API Inventory
 
-## Private API Inventory
+| API | Location | Used for | Verified | Breakage if changed |
+|---|---|---|---|---|
+| `Select._for_update_arg` | `sqlalchemy_cubrid/_compat.py`, `sqlalchemy_cubrid/compiler.py` | Render `FOR UPDATE OF ...` columns | 2.0, 2.1 | `FOR UPDATE` clauses lose `OF` targets or fail to compile |
+| `Select._limit_clause` | `sqlalchemy_cubrid/_compat.py`, `sqlalchemy_cubrid/compiler.py` | Render CUBRID `LIMIT offset, count` form | 2.0, 2.1 | LIMIT/OFFSET SQL generation breaks |
+| `Select._offset_clause` | `sqlalchemy_cubrid/_compat.py`, `sqlalchemy_cubrid/compiler.py` | Render CUBRID `LIMIT offset, count` form | 2.0, 2.1 | OFFSET SQL generation breaks |
+| `sqlalchemy.sql._typing._DMLTableArgument` | `sqlalchemy_cubrid/dml.py` | Type contract for custom `insert/merge/replace` factories | 2.0, 2.1 | Type checking and signatures drift; runtime usually unaffected |
+| `sqlalchemy.sql.base._generative` | `sqlalchemy_cubrid/dml.py` | SQLAlchemy-style immutable statement chaining | 2.0, 2.1 | `on_duplicate_key_update()` / `MERGE` builders become mutable or incorrect |
+| `sqlalchemy.sql.base._exclusive_against` | `sqlalchemy_cubrid/dml.py` | Guard against duplicate post-values clauses | 2.0, 2.1 | Duplicate ODKU clauses can be built without clear errors |
+| `sqlalchemy.util.typing.Self` | `sqlalchemy_cubrid/dml.py` | Typing for fluent DML methods | 2.0, 2.1 | Typing regressions for fluent API; runtime usually unaffected |
 
-| API | File | Lines | Purpose |
-|-----|------|-------|---------|
-| `select._for_update_arg` | `compiler.py` | 93 | Access FOR UPDATE clause metadata (columns list for `OF`) |
-| `select._limit_clause` | `compiler.py` | 104 | Get the LIMIT ClauseElement for custom CUBRID LIMIT syntax |
-| `select._offset_clause` | `compiler.py` | 105 | Get the OFFSET ClauseElement for custom CUBRID LIMIT syntax |
+## Notes On Non-Internal Imports
 
-## Detail
+The project also imports SQLAlchemy modules such as `sqlalchemy.sql.compiler`,
+`sqlalchemy.sql.elements`, and `sqlalchemy.sql.type_api`. These are not
+underscore-prefixed internals and are part of common dialect extension
+patterns, but they are still monitored in canary CI because dialects depend on
+compiler internals in practice.
 
-### `select._for_update_arg`
+## Risk Summary
 
-**What it does**: Returns the `ForUpdateArg` object containing the FOR UPDATE
-options (columns, nowait, etc.).
+- Highest risk: `Select._for_update_arg`, `Select._limit_clause`, and
+  `Select._offset_clause` because they directly affect SQL compilation.
+- Medium risk: `_generative` and `_exclusive_against` because they control
+  custom DML builder behavior.
+- Lower runtime risk: `_DMLTableArgument` and `Self` (mostly typing surface).
 
-**Why we use it**: CUBRID's FOR UPDATE supports `OF col1, col2` syntax, but
-the public `Select.for_update` property only returns a boolean.  We need the
-`.of` attribute to render column-specific locking.
+## Validation Plan
 
-**Risk**: Medium — this attribute has been stable across SA 2.0.x.
-
-**Public alternative**: None known.  Other dialects (MySQL, Oracle) use the
-same private attribute.
-
-### `select._limit_clause` / `select._offset_clause`
-
-**What they do**: Return the LIMIT and OFFSET as `ClauseElement` objects
-(not raw ints, since SA 2.0).
-
-**Why we use them**: CUBRID uses `LIMIT offset, count` syntax (offset-first),
-which differs from standard `LIMIT count OFFSET offset`.  The base compiler's
-`limit_clause()` doesn't support this order.
-
-**Risk**: Medium — changed from int to ClauseElement in SA 2.0, but stable
-since.
-
-**Public alternative**: None.  This is the standard approach for dialects with
-custom LIMIT syntax.
-
-### Local compatibility helpers already removed from direct SA-private access
-
-`is_literal_value()` and `bind_with_type()` now live in `_compat.py` and use
-local logic / public constructors instead of calling private SQLAlchemy helpers
-directly. They are still part of the compatibility story, but no longer count
-as direct private API dependencies.
-
-## SA 2.2 Readiness Plan
-
-### Phase 1: Monitor (current)
-- Track SA 2.2 pre-release changelogs for breaking changes
-- Document current private API usage (this document)
-
-### Phase 2: CI canary
-- Add a tox environment that installs `sqlalchemy>=2.2.0a1` (allow failures)
-- Run offline tests to detect breakage early
-
-### Phase 3: Replace
-- `_for_update_arg`, `_limit_clause`, `_offset_clause` → wait for public
-  alternatives or match other dialects' approach to SA 2.2
-
-### Phase 4: Release
-- Remove upper pin: `sqlalchemy>=2.0`
-- Update compatibility matrix and README
+- Keep running full offline tests on SQLAlchemy `2.0.x` and `2.1.x`.
+- Run a SQLAlchemy `2.2` pre-release canary job with `continue-on-error`.
+- If canary fails, prioritize replacing direct internal usage where public
+  alternatives exist, or align with upstream dialect patterns.
