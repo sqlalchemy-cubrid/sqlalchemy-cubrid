@@ -17,6 +17,10 @@ Verified against: SQLAlchemy `2.0.x` and `2.1.x` (project pin: `>=2.0,<2.2`).
 | `sqlalchemy.sql.base._generative` | `sqlalchemy_cubrid/dml.py` | SQLAlchemy-style immutable statement chaining | 2.0, 2.1 | `on_duplicate_key_update()` / `MERGE` builders become mutable or incorrect |
 | `sqlalchemy.sql.base._exclusive_against` | `sqlalchemy_cubrid/dml.py` | Guard against duplicate post-values clauses | 2.0, 2.1 | Duplicate ODKU clauses can be built without clear errors |
 | `sqlalchemy.util.typing.Self` | `sqlalchemy_cubrid/dml.py` | Typing for fluent DML methods | 2.0, 2.1 | Typing regressions for fluent API; runtime usually unaffected |
+| `sqlalchemy.connectors.asyncio.AsyncAdapt_dbapi_connection` | `sqlalchemy_cubrid/aio_pycubrid_dialect.py` | Async connection adapter for pycubrid.aio | 2.0, 2.1 | Async dialect cannot wrap pycubrid connections |
+| `sqlalchemy.connectors.asyncio.AsyncAdapt_dbapi_cursor` | `sqlalchemy_cubrid/aio_pycubrid_dialect.py` | Async cursor adapter for pycubrid.aio | 2.0, 2.1 | Async cursor operations fail |
+| `sqlalchemy.connectors.asyncio.AsyncAdapt_dbapi_module` | `sqlalchemy_cubrid/aio_pycubrid_dialect.py` | Async DBAPI module adapter | 2.0, 2.1 | Async engine creation fails |
+| `sqlalchemy.util.concurrency.await_only` | `sqlalchemy_cubrid/aio_pycubrid_dialect.py` | Run coroutines from sync context in async adapter | 2.0, 2.1 | Async connection/cursor bridging fails |
 
 ## Notes On Non-Internal Imports
 
@@ -30,6 +34,8 @@ compiler internals in practice.
 
 - Highest risk: `Select._for_update_arg`, `Select._limit_clause`, and
   `Select._offset_clause` because they directly affect SQL compilation.
+- High risk: `sqlalchemy.connectors.asyncio` adapters and `await_only` because
+  the entire async dialect depends on them.
 - Medium risk: `_generative` and `_exclusive_against` because they control
   custom DML builder behavior.
 - Lower runtime risk: `_DMLTableArgument` and `Self` (mostly typing surface).
