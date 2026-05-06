@@ -230,26 +230,33 @@ class CubridCompiler(compiler.SQLCompiler):
 
         return f"ON DUPLICATE KEY UPDATE {', '.join(clauses)}"
 
+    def _validate_merge_params(self, merge_stmt: Any) -> None:
+        """Validate MERGE statement has required components."""
+        from sqlalchemy import exc
+
+        if merge_stmt._target is None:
+            raise exc.CompileError("MERGE statement requires a target table")
+        if merge_stmt._using_source is None:
+            raise exc.CompileError("MERGE statement requires a USING source")
+        if merge_stmt._on_condition is None:
+            raise exc.CompileError("MERGE statement requires an ON condition")
+        if merge_stmt._when_matched is None and merge_stmt._when_not_matched is None:
+            raise exc.CompileError(
+                "MERGE statement must include WHEN MATCHED and/or WHEN NOT MATCHED"
+            )
+
+
     def visit_merge(self, merge_stmt: Any, **kw: Any) -> str:
         from sqlalchemy import exc
         from sqlalchemy.sql import elements
+
+        self._validate_merge_params(merge_stmt)
 
         target = merge_stmt._target
         source = merge_stmt._using_source
         on_condition = merge_stmt._on_condition
         when_matched = merge_stmt._when_matched
         when_not_matched = merge_stmt._when_not_matched
-
-        if target is None:
-            raise exc.CompileError("MERGE statement requires a target table")
-        if source is None:
-            raise exc.CompileError("MERGE statement requires a USING source")
-        if on_condition is None:
-            raise exc.CompileError("MERGE statement requires an ON condition")
-        if when_matched is None and when_not_matched is None:
-            raise exc.CompileError(
-                "MERGE statement must include WHEN MATCHED and/or WHEN NOT MATCHED"
-            )
 
         target_columns = getattr(target, "c", None)
 
