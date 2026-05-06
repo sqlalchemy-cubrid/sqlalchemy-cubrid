@@ -160,3 +160,120 @@ def test_get_indexes_golden(dialect: CubridDialect, mock_connection: _MockConnec
             "unique": True,
         },
     ]
+
+
+# ---------------------------------------------------------------------------
+# Extended golden tests: multi-column constraints, AUTO_INCREMENT variants
+# ---------------------------------------------------------------------------
+
+
+class _MockConnectionMultiCol:
+    """Mock connection simulating a table with composite PK and multi-column unique."""
+
+    def execute(self, statement: Any, params: Any = None) -> _Result:
+        sql = str(statement)
+        if sql.startswith("SHOW COLUMNS IN"):
+            return _Result([
+                ("tenant_id", "INTEGER", "NO", "PRI", None, ""),
+                ("item_id", "INTEGER", "NO", "PRI", None, "auto_increment"),
+                ("category", "VARCHAR(50)", "NO", "MUL", None, ""),
+                ("sku", "VARCHAR(100)", "NO", "MUL", None, ""),
+                ("price", "DECIMAL(12,4)", "YES", "", "0.0000", ""),
+            ])
+        if sql.startswith("SHOW INDEXES IN"):
+            return _Result([
+                ("items", 1, "pk_items", 1, "tenant_id"),
+                ("items", 1, "pk_items", 2, "item_id"),
+                ("items", 0, "uq_items_tenant_sku", 1, "tenant_id"),
+                ("items", 0, "uq_items_tenant_sku", 2, "sku"),
+                ("items", 1, "idx_items_category", 1, "category"),
+            ])
+        if sql.startswith("SHOW CREATE TABLE"):
+            return _Result([
+                (
+                    "items",
+                    """
+CREATE TABLE [items] (
+  [tenant_id] INTEGER NOT NULL,
+  [item_id] INTEGER NOT NULL AUTO_INCREMENT,
+  [category] VARCHAR(50) NOT NULL,
+  [sku] VARCHAR(100) NOT NULL,
+  [price] DECIMAL(12,4) DEFAULT 0.0000,
+  CONSTRAINT [pk_items] PRIMARY KEY ([tenant_id], [item_id]),
+  CONSTRAINT [uq_items_tenant_sku] UNIQUE KEY ([tenant_id], [sku]),
+  CONSTRAINT [fk_items_tenant] FOREIGN KEY ([tenant_id]) REFERENCES [dba.tenants] ([id]) ON DELETE CASCADE ON UPDATE CASCADE
+)
+""",
+                )
+            ])
+        if "FROM _db_index" in sql:
+            return _Result([
+                ("pk_items", True, False),
+                ("uq_items_tenant_sku", False, False),
+                ("idx_items_category", False, False),
+                ("fk_items_tenant", False, True),
+            ])
+        if "FROM db_constraint" in sql:
+            return _Result([("pk_items",)])
+        if "FROM _db_attribute" in sql:
+            return _Result([
+                ("tenant_id", None),
+                ("item_id", None),
+                ("category", None),
+                ("sku", None),
+                ("price", None),
+            ])
+        raise AssertionError(f"Unexpected SQL: {sql}")
+
+
+@pytest.fixture
+def mock_multicol() -> _MockConnectionMultiCol:
+    return _MockConnectionMultiCol()
+
+
+def test_composite_pk_golden(dialect: CubridDialect, mock_multicol: _MockConnectionMultiCol) -> None:
+    pk = dialect.get_pk_constraint(mock_multicol, "items")
+    assert pk == {"name": "pk_items", "constrained_columns": ["tenant_id", "item_id"]}
+
+
+def test_multi_column_unique_golden(
+    dialect: CubridDialect, mock_multicol: _MockConnectionMultiCol
+) -> None:
+    ucs = dialect.get_unique_constraints(mock_multicol, "items")
+    assert ucs == [{"name": "uq_items_tenant_sku", "column_names": ["tenant_id", "sku"]}]
+
+
+def test_autoincrement_non_first_pk_column(
+    dialect: CubridDialect, mock_multicol: _MockConnectionMultiCol
+) -> None:
+    """AUTO_INCREMENT on item_id (second PK column) should be detected."""
+    columns = [dict(c) for c in dialect.get_columns(mock_multicol, "items")]
+    assert columns[0]["autoincrement"] is False  # tenant_id
+    assert columns[1]["autoincrement"] is True  # item_id
+
+
+def test_foreign_key_cascade_golden(
+    dialect: CubridDialect, mock_multicol: _MockConnectionMultiCol
+) -> None:
+    fks = dialect.get_foreign_keys(mock_multicol, "items")
+    assert fks == [
+        {
+            "name": "fk_items_tenant",
+            "constrained_columns": ["tenant_id"],
+            "referred_schema": None,
+            "referred_table": "tenants",
+            "referred_columns": ["id"],
+            "options": {"ondelete": "CASCADE", "onupdate": "CASCADE"},
+        }
+    ]
+
+
+def test_indexes_exclude_pk_and_unique(
+    dialect: CubridDialect, mock_multicol: _MockConnectionMultiCol
+) -> None:
+    """get_indexes should return only non-PK, non-FK indexes."""
+    indexes = dialect.get_indexes(mock_multicol, "items")
+    assert indexes == [
+        {"name": "uq_items_tenant_sku", "column_names": ["tenant_id", "sku"], "unique": True},
+        {"name": "idx_items_category", "column_names": ["category"], "unique": False},
+    ]
