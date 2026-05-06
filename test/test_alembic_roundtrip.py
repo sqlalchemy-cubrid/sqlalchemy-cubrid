@@ -200,3 +200,99 @@ def test_create_reflect_compare_roundtrip_no_diffs() -> None:
         context = MigrationContext.configure(connection=connection, opts={"compare_type": True})
         assert compare_metadata(context, metadata) == []
         assert compare_metadata(context, metadata) == []
+
+
+def test_roundtrip_composite_pk_multi_fk_defaults_no_diffs() -> None:
+    """Complex schema: composite PK, multiple FKs, multi-col unique, defaults."""
+    import sqlalchemy_cubrid.alembic_impl  # noqa: F401
+
+    metadata = sa.MetaData()
+
+    sa.Table(
+        "departments",
+        metadata,
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("name", VARCHAR(100), nullable=False),
+    )
+
+    sa.Table(
+        "employees",
+        metadata,
+        sa.Column("dept_id", sa.Integer, nullable=False),
+        sa.Column("emp_id", sa.Integer, nullable=False),
+        sa.Column("name", VARCHAR(200), nullable=False),
+        sa.Column("manager_dept_id", sa.Integer, nullable=True),
+        sa.Column("manager_emp_id", sa.Integer, nullable=True),
+        sa.Column("salary", sa.Numeric(12, 2), server_default="0.00"),
+        sa.PrimaryKeyConstraint("dept_id", "emp_id"),
+        sa.ForeignKeyConstraint(
+            ["dept_id"], ["departments.id"], name="fk_emp_dept"
+        ),
+        sa.ForeignKeyConstraint(
+            ["manager_dept_id", "manager_emp_id"],
+            ["employees.dept_id", "employees.emp_id"],
+            name="fk_emp_manager",
+        ),
+        sa.UniqueConstraint("dept_id", "name", name="uq_emp_dept_name"),
+    )
+
+    reflected_schema = {
+        "departments": {
+            "columns": [
+                {"name": "id", "type": sa.Integer(), "nullable": False},
+                {"name": "name", "type": VARCHAR(100), "nullable": False},
+            ],
+            "pk_constraint": {"name": None, "constrained_columns": ["id"]},
+        },
+        "employees": {
+            "columns": [
+                {"name": "dept_id", "type": sa.Integer(), "nullable": False},
+                {"name": "emp_id", "type": sa.Integer(), "nullable": False},
+                {"name": "name", "type": VARCHAR(200), "nullable": False},
+                {"name": "manager_dept_id", "type": sa.Integer(), "nullable": True},
+                {"name": "manager_emp_id", "type": sa.Integer(), "nullable": True},
+                {
+                    "name": "salary",
+                    "type": sa.Numeric(12, 2),
+                    "nullable": True,
+                    "default": "0.00",
+                },
+            ],
+            "pk_constraint": {
+                "name": None,
+                "constrained_columns": ["dept_id", "emp_id"],
+            },
+            "foreign_keys": [
+                {
+                    "name": "fk_emp_dept",
+                    "constrained_columns": ["dept_id"],
+                    "referred_schema": None,
+                    "referred_table": "departments",
+                    "referred_columns": ["id"],
+                    "options": {},
+                },
+                {
+                    "name": "fk_emp_manager",
+                    "constrained_columns": ["manager_dept_id", "manager_emp_id"],
+                    "referred_schema": None,
+                    "referred_table": "employees",
+                    "referred_columns": ["dept_id", "emp_id"],
+                    "options": {},
+                },
+            ],
+            "unique_constraints": [
+                {"name": "uq_emp_dept_name", "column_names": ["dept_id", "name"]},
+            ],
+        },
+    }
+
+    connection = _make_connection()
+    inspector = _MockInspector(connection, reflected_schema)
+
+    with (
+        mock.patch("alembic.autogenerate.api.inspect", return_value=inspector),
+        mock.patch("alembic.autogenerate.compare.schema.inspect", return_value=inspector),
+    ):
+        context = MigrationContext.configure(connection=connection, opts={"compare_type": True})
+        diffs = compare_metadata(context, metadata)
+        assert diffs == [], f"Unexpected diffs: {diffs}"
