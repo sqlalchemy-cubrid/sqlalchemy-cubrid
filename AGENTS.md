@@ -11,7 +11,7 @@ Alembic migration support, and PEP 561 typing.
 - **Language**: Python 3.10+
 - **Framework**: SQLAlchemy 2.0 – 2.1
 - **License**: MIT
-- **Version**: 1.4.0 Beta
+- **Version**: 1.4.2 (Production/Stable)
 
 ## Architecture
 
@@ -254,16 +254,51 @@ The dialect translates automatically in `create_connect_args()`.
 
 ## Commit Convention
 
-```
-<type>: <description>
+### Format
 
-<body>
+```
+<type>(<scope>): <imperative summary of WHAT changed>
+
+- <bullet 1: specific change with file/function context>
+- <bullet 2: ...>
+
+Closes #<issue>
 
 Ultraworked with [Sisyphus](https://github.com/code-yeongyu/oh-my-opencode)
 Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
 ```
 
-Types: `feat`, `fix`, `docs`, `chore`, `ci`, `style`, `test`, `refactor`
+### Types
+
+| Type | When to use |
+|------|-------------|
+| `feat` | New user-facing capability (new DML construct, new type, new dialect flag) |
+| `fix` | Bug fix — corrects wrong behavior |
+| `refactor` | Internal restructuring with no behavior change |
+| `test` | Add/update tests only |
+| `docs` | Documentation only |
+| `chore` | Tooling, deps, CI config, version bumps |
+| `ci` | CI workflow changes |
+| `perf` | Performance improvement with measurable impact |
+
+### Rules (MANDATORY)
+
+1. **Subject line describes WHAT changed, not batch/phase labels.**
+   - ❌ `fix: batch 4 correctness fixes for 1.0 readiness`
+   - ✅ `fix: preserve TZ reflection, STRING national kwarg, and UPDATE LIMIT 0`
+2. **Be specific — name the function, type, or behavior.**
+   - ❌ `feat: gap fixes, stability messaging, code quality improvements`
+   - ✅ `fix: FK actions regex, Alembic guardrails, FULL JOIN/LATERAL rejection`
+3. **One logical change per commit.** If subject needs "and" more than once, split.
+4. **Never use internal jargon** (batch N, phase N, readiness) — commit history is public.
+5. **Type must match content:**
+   - `feat` = new capability that didn't exist before
+   - `fix` = something was broken and is now correct
+   - `refactor` = code moved/restructured but behavior unchanged
+   - Don't label a fix as `feat` or a mixed bag as `feat`
+6. **Body bullets reference issue numbers** (`#135`, `#136`) for traceability.
+7. **Scope is optional** but use it for module-specific changes: `fix(compiler):`, `feat(types):`.
+8. **Version in commit message must match actual project version.** Never reference "1.0" when project is v1.4.x.
 
 ## Release Process
 
