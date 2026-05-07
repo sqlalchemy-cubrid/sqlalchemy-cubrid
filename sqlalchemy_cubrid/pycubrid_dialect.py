@@ -70,10 +70,7 @@ class PyCubridDialect(CubridDialect):
     @classmethod
     def import_dbapi(cls) -> DBAPIModule:
         """Import and return the pycubrid DBAPI module."""
-        try:
-            dbapi_module = import_module("pycubrid")
-        except ImportError as e:
-            raise e
+        dbapi_module = import_module("pycubrid")
         log.debug("Loaded pycubrid DBAPI (version %s)", getattr(dbapi_module, "__version__", "?"))
         return cast(DBAPIModule, dbapi_module)  # pyright: ignore[reportInvalidCast]
 

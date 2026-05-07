@@ -243,10 +243,7 @@ class CubridDialect(default.DefaultDialect):
     @classmethod
     def import_dbapi(cls) -> DBAPIModule:
         """Import and return the CUBRID DBAPI module (SA 2.0 API)."""
-        try:
-            import CUBRIDdb as cubrid_dbapi  # type: ignore[import-not-found]  # pyright: ignore[reportMissingImports]
-        except ImportError as e:
-            raise e
+        import CUBRIDdb as cubrid_dbapi  # type: ignore[import-not-found]  # pyright: ignore[reportMissingImports]
         return cast(DBAPIModule, cubrid_dbapi)  # pyright: ignore[reportInvalidCast]
 
     # Keep legacy dbapi() for SA 1.x compat if needed
@@ -331,6 +328,10 @@ class CubridDialect(default.DefaultDialect):
 
                     util.warn("Did not recognize type '%s' of column '%s'" % (coltype_raw, colname))
                     coltype = sqltypes.NULLTYPE
+
+            # Preserve timezone=True for TZ/LTZ type variants (#181)
+            if coltype_key.endswith(("TZ", "LTZ")) and hasattr(coltype, "timezone"):
+                coltype = coltype.__class__(timezone=True)
 
             columns.append(
                 {

@@ -268,7 +268,7 @@ class STRING(_StringType):
     __visit_name__ = "STRING"
 
     def __init__(self, length: int | None = None, national: bool = False, **kwargs: Any) -> None:
-        super().__init__(length=length, **kwargs)
+        super().__init__(length=length, national=national, **kwargs)
 
 
 # ---------------------------------------------------------------------------

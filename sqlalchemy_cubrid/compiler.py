@@ -46,6 +46,7 @@ class CubridCompiler(compiler.SQLCompiler):
             "collection via TABLE(column), e.g.: "
             "SELECT (SELECT COUNT(*) FROM TABLE(t.tags) AS u) FROM t"
         )
+
     def visit_group_concat_func(self, fn: Any, **kw: Any) -> str:
         """Render GROUP_CONCAT aggregate function.
 
@@ -131,7 +132,7 @@ class CubridCompiler(compiler.SQLCompiler):
     def update_limit_clause(self, update_stmt: Any) -> str | None:  # pyright: ignore[reportIncompatibleMethodOverride]
         # https://www.cubrid.org/manual/en/11.0/sql/query/update.html
         limit = update_stmt.kwargs.get(f"{self.dialect.name}_limit", None)
-        if limit:
+        if limit is not None:
             return f"LIMIT {limit}"
         return None
 
