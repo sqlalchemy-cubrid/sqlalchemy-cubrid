@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, cast
+from typing import Any
 
 from sqlalchemy.engine import default
 from sqlalchemy.sql import compiler
@@ -402,7 +402,7 @@ class CubridExecutionContext(default.DefaultExecutionContext):
     def should_autocommit_text(self, statement: str) -> Any:
         return AUTOCOMMIT_REGEXP.match(statement)
 
-    def get_lastrowid(self) -> int:
+    def get_lastrowid(self) -> int | None:
         """Return the last inserted row ID.
 
         CUBRID's Python driver does not expose ``cursor.lastrowid``.
@@ -415,7 +415,7 @@ class CubridExecutionContext(default.DefaultExecutionContext):
             raw_conn = self.root_connection.connection.dbapi_connection
             if raw_conn is not None and hasattr(raw_conn, "get_last_insert_id"):
                 last_id = raw_conn.get_last_insert_id()
-                return cast(int, None) if last_id is None else int(last_id)  # pyright: ignore[reportInvalidCast]
+                return None if last_id is None else int(last_id)
         except Exception:  # nosec B110 — fallback to SQL when driver lacks method
             log.debug("get_last_insert_id via driver failed, falling back to SQL", exc_info=True)
 
@@ -428,4 +428,4 @@ class CubridExecutionContext(default.DefaultExecutionContext):
                 return int(row[0])
         finally:
             cursor.close()
-        return cast(int, None)  # pyright: ignore[reportInvalidCast]
+        return None

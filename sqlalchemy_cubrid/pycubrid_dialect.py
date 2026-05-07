@@ -29,11 +29,11 @@ class PyCubridExecutionContext(CubridExecutionContext):
     so we use it directly instead of the CUBRIDdb workaround.
     """
 
-    def get_lastrowid(self) -> int:
+    def get_lastrowid(self) -> int | None:
         """Return the last inserted row ID from pycubrid's cursor."""
         try:
             lastrowid = self.cursor.lastrowid
-            return cast(int, None) if lastrowid is None else int(lastrowid)  # pyright: ignore[reportInvalidCast]
+            return None if lastrowid is None else int(lastrowid)
         except AttributeError:
             pass
 
@@ -46,7 +46,7 @@ class PyCubridExecutionContext(CubridExecutionContext):
                 return int(row[0])
         finally:
             cursor.close()
-        return cast(int, None)  # pyright: ignore[reportInvalidCast]
+        return None
 
 
 class PyCubridDialect(CubridDialect):
