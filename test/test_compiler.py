@@ -88,12 +88,29 @@ class TestSelectCompilation:
         assert "users.id" in sql
         assert "users.name" in sql
 
-    def test_for_update_nowait_ignored(self):
-        """CUBRID does not support NOWAIT; it should still render FOR UPDATE."""
+    def test_for_update_nowait_raises(self):
+        """CUBRID does not support NOWAIT; must raise CompileError."""
         stmt = select(users).with_for_update(nowait=True)
-        sql = _compile(stmt)
-        # FOR UPDATE should be present, NOWAIT is silently ignored by SA base compiler
-        assert "FOR UPDATE" in sql
+        with pytest.raises(CompileError, match="NOWAIT"):
+            _compile(stmt)
+
+    def test_for_update_skip_locked_raises(self):
+        """CUBRID does not support SKIP LOCKED; must raise CompileError."""
+        stmt = select(users).with_for_update(skip_locked=True)
+        with pytest.raises(CompileError, match="SKIP LOCKED"):
+            _compile(stmt)
+
+    def test_for_update_read_raises(self):
+        """CUBRID does not support FOR SHARE; must raise CompileError."""
+        stmt = select(users).with_for_update(read=True)
+        with pytest.raises(CompileError, match="FOR SHARE"):
+            _compile(stmt)
+
+    def test_for_update_key_share_raises(self):
+        """CUBRID does not support FOR KEY SHARE; must raise CompileError."""
+        stmt = select(users).with_for_update(key_share=True)
+        with pytest.raises(CompileError, match="KEY SHARE"):
+            _compile(stmt)
 
 
 class TestInsertCompilation:
@@ -820,6 +837,32 @@ class TestUpdateCompilation:
         sql = _compile(stmt)
         assert "LIMIT 0" in sql
 
+    def test_update_limit_rejects_bool(self):
+        """cubrid_limit=True must not be accepted (bool is subclass of int)."""
+        from sqlalchemy import update
+
+        stmt = update(users).values(name="test")
+        stmt.kwargs["cubrid_limit"] = True
+        with pytest.raises(CompileError, match="non-negative integer"):
+            _compile(stmt)
+
+    def test_update_limit_rejects_negative(self):
+        """cubrid_limit=-1 must raise CompileError."""
+        from sqlalchemy import update
+
+        stmt = update(users).values(name="test")
+        stmt.kwargs["cubrid_limit"] = -1
+        with pytest.raises(CompileError, match="non-negative integer"):
+            _compile(stmt)
+
+    def test_update_limit_rejects_string(self):
+        """cubrid_limit='5' must raise CompileError."""
+        from sqlalchemy import update
+
+        stmt = update(users).values(name="test")
+        stmt.kwargs["cubrid_limit"] = "5"
+        with pytest.raises(CompileError, match="non-negative integer"):
+            _compile(stmt)
     def test_update_from_raises_compile_error(self):
         t1 = sa.table("t1", sa.column("id"), sa.column("val"))
         t2 = sa.table("t2", sa.column("id"), sa.column("rate"))

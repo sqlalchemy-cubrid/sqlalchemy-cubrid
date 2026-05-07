@@ -15,16 +15,10 @@ def is_literal_value(value: Any) -> bool:
 
 
 def bind_with_type(element: elements.BindParameter[Any], type_: Any) -> elements.BindParameter[Any]:
-    """Create a new BindParameter preserving all flags but with the given type."""
-    return elements.BindParameter(
-        element.key,
-        element.value,
-        type_=type_,
-        unique=element.unique,
-        expanding=element.expanding,
-        literal_execute=element.literal_execute,
-        isoutparam=element.isoutparam,
-    )
+    """Create a copy of *element* with *type_* overridden, preserving all internal state."""
+    cloned = element._clone()
+    cloned.type = type_
+    return cloned
 
 
 def get_for_update_arg(select: Any) -> Any | None:

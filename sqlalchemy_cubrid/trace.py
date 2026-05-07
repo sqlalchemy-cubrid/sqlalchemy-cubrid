@@ -80,7 +80,10 @@ def trace_query(
             connection.execute(statement)
 
         result = connection.execute(text("SHOW TRACE"))
-        rows = result.fetchall()
+        try:
+            rows = result.fetchall()
+        finally:
+            result.close()
 
         trace_output: list[str] = []
         for row in rows:
@@ -89,4 +92,7 @@ def trace_query(
 
         return trace_output
     finally:
-        connection.execute(text("SET TRACE OFF"))
+        try:
+            connection.execute(text("SET TRACE OFF"))
+        except Exception:  # noqa: BLE001 — never mask the original exception
+            pass

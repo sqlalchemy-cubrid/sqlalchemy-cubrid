@@ -745,13 +745,15 @@ class CubridDialect(default.DefaultDialect):
         """Return the current isolation level for *dbapi_conn*."""
         # https://www.cubrid.org/manual/en/11.0/sql/transaction.html
         cursor = dbapi_connection.cursor()
-        cursor.execute("GET TRANSACTION ISOLATION LEVEL TO X")
-        cursor.execute("SELECT X")
-        row = cursor.fetchone()
-        if row is None:
-            return "REPEATABLE READ SCHEMA, READ COMMITTED INSTANCES"
-        val = row[0]
-        cursor.close()
+        try:
+            cursor.execute("GET TRANSACTION ISOLATION LEVEL TO X")
+            cursor.execute("SELECT X")
+            row = cursor.fetchone()
+            if row is None:
+                return "REPEATABLE READ SCHEMA, READ COMMITTED INSTANCES"
+            val = row[0]
+        finally:
+            cursor.close()
         # CUBRID returns numeric level; map to string for SA
         if isinstance(val, int):
             return self._ISOLATION_LEVEL_REVERSE.get(val, str(val))

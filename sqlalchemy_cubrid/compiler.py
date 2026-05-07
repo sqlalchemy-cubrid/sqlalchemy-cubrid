@@ -107,6 +107,14 @@ class CubridCompiler(compiler.SQLCompiler):
         for_update_arg = get_for_update_arg(select)
         if for_update_arg is None:
             return ""
+        if for_update_arg.nowait:
+            raise CompileError("CUBRID does not support FOR UPDATE NOWAIT")
+        if for_update_arg.skip_locked:
+            raise CompileError("CUBRID does not support FOR UPDATE SKIP LOCKED")
+        if for_update_arg.read:
+            raise CompileError("CUBRID does not support FOR SHARE / FOR KEY SHARE")
+        if getattr(for_update_arg, "key_share", False):
+            raise CompileError("CUBRID does not support FOR KEY SHARE")
         text = " FOR UPDATE"
         if for_update_arg.of:
             text += " OF " + ", ".join(self.process(col, **kw) for col in for_update_arg.of)
@@ -133,6 +141,10 @@ class CubridCompiler(compiler.SQLCompiler):
         # https://www.cubrid.org/manual/en/11.0/sql/query/update.html
         limit = update_stmt.kwargs.get(f"{self.dialect.name}_limit", None)
         if limit is not None:
+            if type(limit) is not int or limit < 0:
+                raise CompileError(
+                    "cubrid_limit must be a non-negative integer, got %r" % (limit,)
+                )
             return f"LIMIT {limit}"
         return None
 
