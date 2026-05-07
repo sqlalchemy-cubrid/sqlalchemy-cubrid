@@ -17,7 +17,7 @@
 
 ---
 
-> **状态：Beta。** 核心公共 API 遵循语义化版本控制；在项目仍处于积极开发阶段时，次版本发布可能会增加新功能和错误修复。
+> **状态：Production/Stable** — 支持 CUBRID 10.2–11.4 和 SQLAlchemy 2.0–2.1 的稳定维护方言。每个 PR 均通过实时数据库集成 CI 验证。
 
 ## 为什么选择 sqlalchemy-cubrid？
 

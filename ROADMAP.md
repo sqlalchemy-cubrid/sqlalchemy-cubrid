@@ -11,7 +11,7 @@
 - 🗂️ [Org Project Board](https://github.com/orgs/cubrid-lab/projects/2)
 - 🌐 [Ecosystem Roadmap](https://github.com/cubrid-lab/.github/blob/main/ROADMAP.md)
 
-## Current Release Line — v1.4.x Beta — Stabilization & Polish
+## Current Release Line — v1.4.x — Stable Maintenance & Polish
 
 - Documentation accuracy and consistency across README / docs / AI-facing project files
 - Continued SQLAlchemy 2.0–2.1 hardening while preparing for SA 2.2 validation

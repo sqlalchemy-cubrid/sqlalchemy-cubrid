@@ -17,7 +17,7 @@
 
 ---
 
-> **Status: Beta.** Die zentrale öffentliche API folgt Semantic Versioning; Minor-Releases können zusätzliche Funktionen und Fehlerbehebungen enthalten, solange sich das Projekt noch in aktiver Entwicklung befindet.
+> **Status: Production/Stable** — Stabiler, gewarteter SQLAlchemy-Dialekt für CUBRID 10.2–11.4. Jeder PR wird durch Live-Datenbank-Integrations-CI validiert.
 
 ## Warum sqlalchemy-cubrid?
 

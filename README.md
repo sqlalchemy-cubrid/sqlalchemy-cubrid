@@ -17,7 +17,7 @@
 
 ---
 
-> **Status: Beta.** The core public API follows semantic versioning; minor releases may add features and bug fixes while the project remains under active development.
+> **Status: Production/Stable** — `sqlalchemy-cubrid` is a maintained SQLAlchemy dialect for CUBRID supporting SQLAlchemy 2.0–2.1 and CUBRID 10.2–11.4.
 
 ## Why sqlalchemy-cubrid?
 
@@ -28,13 +28,21 @@ actively maintained SQLAlchemy dialect that supports the modern 2.0–2.1 API.
 **sqlalchemy-cubrid** bridges that gap:
 
 - Full SQLAlchemy 2.0–2.1 dialect with **statement caching** and **PEP 561 typing**
-- **619 offline tests** with **~98.26% code coverage** — no database required to run them
+- **Extensive offline test suite** with **high code coverage** ([CI badge above](https://github.com/cubrid-lab/sqlalchemy-cubrid/actions/workflows/ci.yml)) — no database required to run them
 - **Concurrency stress tests** — `QueuePool` sync threaded + asyncio.gather workloads validated against live CUBRID
 - **SQLAlchemy 2.2-ready compat shim** — private API access wrapped in `_compat.py` (still pinned `<2.2` until full SA 2.2 validation)
 - Tested against **4 CUBRID versions** (10.2, 11.0, 11.2, 11.4) across **Python 3.10 -- 3.14**
 - CUBRID-specific DML constructs: `ON DUPLICATE KEY UPDATE`, `MERGE`, `REPLACE INTO`
 - Alembic migration support out of the box
 - **Three driver options** — C-extension (`cubrid://`), pure Python (`cubrid+pycubrid://`), or async pure Python (`cubrid+aiopycubrid://`)
+
+## Support Status
+
+- **Status**: Production/Stable [![PyPI version](https://img.shields.io/pypi/v/sqlalchemy-cubrid)](https://pypi.org/project/sqlalchemy-cubrid)
+- Supported matrix: SQLAlchemy `>=2.0,<2.2`, CUBRID `10.2`, `11.0`, `11.2`, `11.4`, Python `3.10`–`3.14`
+- Integration CI exercises Python 3.10 and 3.14 against all four CUBRID versions on every PR; intermediate versions (3.11–3.13) are supported and validated via the offline test suite
+- SQLAlchemy `2.2` remains canary-only until explicitly added to the supported matrix
+- See [Known Limitations](#known-limitations) for behavior boundaries and unsupported features
 
 ## Architecture
 
@@ -147,14 +155,15 @@ async with AsyncSession(engine) as session:
 
 ## Known Limitations
 
-- **No `RETURNING`** — `INSERT/UPDATE/DELETE ... RETURNING` not supported; use `cursor.lastrowid` or `LAST_INSERT_ID()`
+- **No `RETURNING`** — `INSERT/UPDATE/DELETE ... RETURNING` not supported; use `cursor.lastrowid` or `SELECT LAST_INSERT_ID()` after the statement
 - **No sequences** — CUBRID uses `AUTO_INCREMENT` only
 - **No multi-schema** — single schema per database
-- **DDL auto-commits** — migrations are not transactional (`transactional_ddl = False`)
+- **DDL auto-commits** — migrations are not transactional (`transactional_ddl = False`); use Alembic batch migrations and test rollback scenarios manually
 - **SQLAlchemy 2.0–2.1 only** — pinned to `<2.2` due to internal API dependencies ([details](docs/ARCHITECTURE.md))
 - **Async requires pycubrid >= 1.3.2,<2.0** — the `cubrid+aiopycubrid://` driver needs the async-capable pycubrid package line currently supported by this project
 - **CARDINALITY() broken** — `func.cardinality()` raises `CompileError` with workaround guidance; the CUBRID server has a [known bug](https://github.com/cubrid-lab/.github/issues/3)
 - **Reserved words auto-quoted** — Column names matching CUBRID reserved words (`day`, `count`, `value`, etc.) are automatically double-quoted in DDL; see [reserved word list](https://github.com/cubrid-lab/.github/issues/5)
+- **Timezone type fidelity** — CUBRID `TIMESTAMPTZ` is reflected as `TIMESTAMP`; timezone offset is preserved in the stored value but the dialect does not distinguish `TZ` vs `LTZ` semantics at the SQLAlchemy type level. In practice this means `datetime` objects round-trip correctly but explicit TZ/LTZ type introspection is not available
 
 ## Documentation
 
