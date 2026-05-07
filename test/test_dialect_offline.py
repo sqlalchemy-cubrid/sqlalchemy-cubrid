@@ -339,6 +339,37 @@ class TestReflectionMethods:
         assert columns[6]["comment"] is None
         warn.assert_called_once()
 
+    def test_get_columns_preserves_timezone_for_tz_types(self):
+        """Regression: TIMESTAMPTZ/DATETIMETZ reflection must set timezone=True. (#181)"""
+        dialect = CubridDialect()
+        connection = MagicMock()
+        connection.info_cache = {}
+        connection.dialect_options = {}
+
+        rows = [
+            ("ts_col", "TIMESTAMP", "YES", "", None, ""),
+            ("tstz_col", "TIMESTAMPTZ", "YES", "", None, ""),
+            ("tsltz_col", "TIMESTAMPLTZ", "YES", "", None, ""),
+            ("dt_col", "DATETIME", "YES", "", None, ""),
+            ("dttz_col", "DATETIMETZ", "YES", "", None, ""),
+            ("dtltz_col", "DATETIMELTZ", "YES", "", None, ""),
+        ]
+        comment_rows = []
+        connection.execute.side_effect = [rows, comment_rows]
+
+        columns = _invoke_reflection(dialect, "get_columns", connection, "tz_table")
+
+        assert len(columns) == 6
+        # Plain types: no timezone
+        assert getattr(columns[0]["type"], "timezone", False) is False
+        assert getattr(columns[3]["type"], "timezone", False) is False
+        # TZ/LTZ types: timezone=True
+        assert columns[1]["type"].timezone is True  # TIMESTAMPTZ
+        assert columns[2]["type"].timezone is True  # TIMESTAMPLTZ
+        assert columns[4]["type"].timezone is True  # DATETIMETZ
+        assert columns[5]["type"].timezone is True  # DATETIMELTZ
+
+
     def test_get_pk_constraint_with_primary_key_and_constraint_name(self):
         dialect = CubridDialect()
         connection = MagicMock()

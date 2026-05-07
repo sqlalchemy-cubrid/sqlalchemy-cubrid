@@ -811,6 +811,15 @@ class TestUpdateCompilation:
         sql = _compile(stmt)
         assert "UPDATE" in sql
 
+    def test_update_with_limit_zero(self):
+        """Regression: LIMIT 0 must not be silently dropped. (#183)"""
+        from sqlalchemy import update
+
+        stmt = update(users).values(name="test")
+        stmt.kwargs["cubrid_limit"] = 0
+        sql = _compile(stmt)
+        assert "LIMIT 0" in sql
+
     def test_update_from_raises_compile_error(self):
         t1 = sa.table("t1", sa.column("id"), sa.column("val"))
         t2 = sa.table("t2", sa.column("id"), sa.column("rate"))
