@@ -17,6 +17,7 @@ from sqlalchemy.sql import sqltypes
 
 from sqlalchemy_cubrid._compat import (
     bind_with_type,
+    get_distinct,
     get_for_update_arg,
     get_limit_clause,
     get_offset_clause,
@@ -65,7 +66,7 @@ class CubridCompiler(compiler.SQLCompiler):
         return rendered
 
     def get_select_precolumns(self, select: Any, **kw: Any) -> str:
-        if bool(select._distinct):
+        if bool(get_distinct(select)):
             return "DISTINCT "
         return ""
 

@@ -13,6 +13,7 @@ Verified against: SQLAlchemy `2.0.x` and `2.1.x` (project pin: `>=2.0,<2.2`).
 | `Select._for_update_arg` | `sqlalchemy_cubrid/_compat.py`, `sqlalchemy_cubrid/compiler.py` | Render `FOR UPDATE OF ...` columns | 2.0, 2.1 | `FOR UPDATE` clauses lose `OF` targets or fail to compile |
 | `Select._limit_clause` | `sqlalchemy_cubrid/_compat.py`, `sqlalchemy_cubrid/compiler.py` | Render CUBRID `LIMIT offset, count` form | 2.0, 2.1 | LIMIT/OFFSET SQL generation breaks |
 | `Select._offset_clause` | `sqlalchemy_cubrid/_compat.py`, `sqlalchemy_cubrid/compiler.py` | Render CUBRID `LIMIT offset, count` form | 2.0, 2.1 | OFFSET SQL generation breaks |
+| `Select._distinct` | `sqlalchemy_cubrid/_compat.py`, `sqlalchemy_cubrid/compiler.py` | Render `DISTINCT` prefix in SELECT | 2.0, 2.1 | DISTINCT queries lose the keyword |
 | `sqlalchemy.sql._typing._DMLTableArgument` | `sqlalchemy_cubrid/dml.py` | Type contract for custom `insert/merge/replace` factories | 2.0, 2.1 | Type checking and signatures drift; runtime usually unaffected |
 | `sqlalchemy.sql.base._generative` | `sqlalchemy_cubrid/dml.py` | SQLAlchemy-style immutable statement chaining | 2.0, 2.1 | `on_duplicate_key_update()` / `MERGE` builders become mutable or incorrect |
 | `sqlalchemy.sql.base._exclusive_against` | `sqlalchemy_cubrid/dml.py` | Guard against duplicate post-values clauses | 2.0, 2.1 | Duplicate ODKU clauses can be built without clear errors |
@@ -32,8 +33,8 @@ compiler internals in practice.
 
 ## Risk Summary
 
-- Highest risk: `Select._for_update_arg`, `Select._limit_clause`, and
-  `Select._offset_clause` because they directly affect SQL compilation.
+- Highest risk: `Select._for_update_arg`, `Select._limit_clause`,
+  `Select._offset_clause`, and `Select._distinct` because they directly affect SQL compilation.
 - High risk: `sqlalchemy.connectors.asyncio` adapters and `await_only` because
   the entire async dialect depends on them.
 - Medium risk: `_generative` and `_exclusive_against` because they control
