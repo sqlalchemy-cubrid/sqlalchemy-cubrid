@@ -17,7 +17,7 @@
 
 ---
 
-> **स्थिति: Beta.** मुख्य सार्वजनिक API semantic versioning का पालन करता है; जब तक परियोजना सक्रिय विकास में है, minor releases में नई सुविधाएँ और bug fixes शामिल हो सकते हैं।
+> **स्थिति: Production/Stable** — CUBRID 10.2–11.4 और SQLAlchemy 2.0–2.1 के लिए स्थिर रूप से रखरखाव किया गया dialect। प्रत्येक PR को लाइव DB इंटीग्रेशन CI द्वारा सत्यापित किया जाता है।
 
 ## sqlalchemy-cubrid क्यों?
 
