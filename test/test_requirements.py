@@ -88,7 +88,7 @@ class TestRequirements:
             ("datetime", True),
             ("timestamp", True),
             ("text_type", True),
-            ("json_type", False),
+            ("json_type", True),
             ("array_type", False),
             ("uuid_data_type", False),
         ],
