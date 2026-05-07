@@ -175,6 +175,12 @@ class TestTypeInstantiation:
         t = STRING()
         assert isinstance(t, sqltypes.String)
 
+    def test_string_national_passed_to_parent(self):
+        """Regression: STRING(national=True) must propagate to _StringType. (#182)"""
+        t = STRING(national=True)
+        assert t.national is True
+
+
     def test_blob(self):
         t = BLOB()
         assert isinstance(t, sqltypes.LargeBinary)
