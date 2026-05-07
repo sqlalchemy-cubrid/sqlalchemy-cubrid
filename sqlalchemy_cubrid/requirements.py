@@ -178,8 +178,8 @@ class Requirements(SuiteRequirements):
 
     @property
     def json_type(self) -> compound:
-        """CUBRID does not support JSON type."""
-        return _CLOSED
+        """CUBRID supports JSON as of version 10.2 (RFC 7159 compliant)."""
+        return _OPEN
 
     @property
     def array_type(self) -> compound:
