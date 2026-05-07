@@ -37,3 +37,7 @@ def get_limit_clause(select: Any) -> Any | None:
 
 def get_offset_clause(select: Any) -> Any | None:
     return getattr(select, "_offset_clause", None)
+
+
+def get_distinct(select: Any) -> Any:
+    return getattr(select, "_distinct", False)
