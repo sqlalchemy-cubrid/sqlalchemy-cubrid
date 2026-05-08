@@ -225,9 +225,7 @@ def test_roundtrip_composite_pk_multi_fk_defaults_no_diffs() -> None:
         sa.Column("manager_emp_id", sa.Integer, nullable=True),
         sa.Column("salary", sa.Numeric(12, 2), server_default="0.00"),
         sa.PrimaryKeyConstraint("dept_id", "emp_id"),
-        sa.ForeignKeyConstraint(
-            ["dept_id"], ["departments.id"], name="fk_emp_dept"
-        ),
+        sa.ForeignKeyConstraint(["dept_id"], ["departments.id"], name="fk_emp_dept"),
         sa.ForeignKeyConstraint(
             ["manager_dept_id", "manager_emp_id"],
             ["employees.dept_id", "employees.emp_id"],

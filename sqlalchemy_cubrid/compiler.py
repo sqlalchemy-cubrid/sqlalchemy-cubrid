@@ -283,6 +283,10 @@ class CubridCompiler(compiler.SQLCompiler):
                 name = column_key.name
                 if target_columns is not None and name in target_columns:
                     return target_columns[name]
+                if target_columns is not None:
+                    raise exc.CompileError(
+                        f"MERGE: column '{name}' not found in target table"
+                    )
                 return column_key
             return None
 

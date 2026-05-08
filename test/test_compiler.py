@@ -1603,17 +1603,17 @@ class TestCoverageEdgeCases:
         sql = _compile(stmt)
         assert "WHEN MATCHED THEN UPDATE SET" in sql
 
-        # Test 2: Column-like object without proper target metadata still compiles
-        # by accepting the object as-is (fallback behavior)
+        # Test 2: Column object not in target table raises CompileError
         non_target_col = Column("external_col", String(50))
         stmt2 = merge(users).using(source).on(users.c.id == source.c.id)
         stmt2._when_matched = {
             "values": {non_target_col: source.c.name}  # Column not in users table
         }
         stmt2._when_not_matched = None
-        sql2 = _compile(stmt2)
-        # Should still compile - fallback accepts the Column object
-        assert "WHEN MATCHED THEN UPDATE SET" in sql2
+        from sqlalchemy import exc
+
+        with pytest.raises(exc.CompileError, match="not found in target table"):
+            _compile(stmt2)
 
     def test_merge_empty_matched_values_raises(self):
         """compiler.py line 248: MERGE WHEN MATCHED with empty values."""
