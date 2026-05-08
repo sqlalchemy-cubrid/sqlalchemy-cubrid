@@ -17,7 +17,6 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy.engine import default, reflection
 from sqlalchemy.engine.interfaces import (
     DBAPIConnection,
-    DBAPIModule,
     ConnectArgsType,
     ReflectedCheckConstraint,
     ReflectedColumn,
@@ -27,6 +26,8 @@ from sqlalchemy.engine.interfaces import (
     ReflectedTableComment,
     ReflectedUniqueConstraint,
 )
+
+from sqlalchemy_cubrid._compat import DBAPIModule
 from sqlalchemy.engine.url import URL
 from sqlalchemy.sql import text
 from sqlalchemy.sql.compiler import IdentifierPreparer
@@ -793,9 +794,11 @@ class CubridDialect(default.DefaultDialect):
                 f"Valid values: {list(self._ISOLATION_LEVEL_MAP.keys())}"
             )
         cursor = dbapi_connection.cursor()
-        cursor.execute(f"SET TRANSACTION ISOLATION LEVEL {numeric_level}")
-        cursor.execute("COMMIT")
-        cursor.close()
+        try:
+            cursor.execute(f"SET TRANSACTION ISOLATION LEVEL {numeric_level}")
+            cursor.execute("COMMIT")
+        finally:
+            cursor.close()
 
     def reset_isolation_level(self, dbapi_conn: DBAPIConnection) -> None:
         """Revert isolation level to the CUBRID default (level 4)."""

@@ -371,6 +371,8 @@ class _FormatTypeMixin:
         super_proc = self.string_bind_processor(dialect)  # type: ignore[attr-defined]  # noqa: E501
 
         def process(value: Any) -> Any:
+            if value is None:
+                return None
             value = self._format_value(value)
             if super_proc:
                 value = super_proc(value)
@@ -381,7 +383,9 @@ class _FormatTypeMixin:
     def literal_processor(self, dialect: Any) -> Any:
         super_proc = self.string_literal_processor(dialect)  # type: ignore[attr-defined]  # noqa: E501
 
-        def process(value: Any) -> str:
+        def process(value: Any) -> str | None:
+            if value is None:
+                return None
             value = self._format_value(value)
             if super_proc:
                 value = super_proc(value)

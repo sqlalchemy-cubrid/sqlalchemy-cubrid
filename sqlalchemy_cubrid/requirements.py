@@ -140,7 +140,7 @@ class Requirements(SuiteRequirements):
 
     @property
     def fetch_no_order(self) -> compound:
-        return _OPEN
+        return _CLOSED
 
     @property
     def order_by_col_from_union(self) -> compound:

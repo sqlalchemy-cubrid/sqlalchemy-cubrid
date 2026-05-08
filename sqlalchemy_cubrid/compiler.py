@@ -242,6 +242,11 @@ class CubridCompiler(compiler.SQLCompiler):
                 )
             )
 
+        if not clauses:
+            raise CompileError(
+                "ON DUPLICATE KEY UPDATE has no effective columns to update"
+            )
+
         return f"ON DUPLICATE KEY UPDATE {', '.join(clauses)}"
 
     def _validate_merge_params(self, merge_stmt: Any) -> None:
@@ -315,6 +320,10 @@ class CubridCompiler(compiler.SQLCompiler):
             set_clauses = []
             for column_key, value in matched_values.items():
                 target_column = _resolve_target_column(column_key)
+                if target_column is None and isinstance(column_key, str):
+                    raise exc.CompileError(
+                        f"MERGE WHEN MATCHED: column '{column_key}' not found in target table"
+                    )
                 set_clauses.append(
                     f"{_render_column_name(column_key)} = {_render_value(value, target_column)}"
                 )
@@ -347,6 +356,10 @@ class CubridCompiler(compiler.SQLCompiler):
             rendered_values = []
             for column_key, value in zip(insert_columns, insert_values):
                 target_column = _resolve_target_column(column_key)
+                if target_column is None and isinstance(column_key, str):
+                    raise exc.CompileError(
+                        f"MERGE WHEN NOT MATCHED: column '{column_key}' not found in target table"
+                    )
                 rendered_columns.append(_render_column_name(column_key))
                 rendered_values.append(_render_value(value, target_column))
 

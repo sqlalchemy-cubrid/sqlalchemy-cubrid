@@ -13,10 +13,16 @@ from typing import Any, Callable, cast
 from sqlalchemy.connectors.asyncio import (
     AsyncAdapt_dbapi_connection,
     AsyncAdapt_dbapi_cursor,
-    AsyncAdapt_dbapi_module,
 )
+
+# AsyncAdapt_dbapi_module was added in SQLAlchemy 2.1.
+try:
+    from sqlalchemy.connectors.asyncio import AsyncAdapt_dbapi_module
+except ImportError:  # pragma: no cover — SA 2.0
+    AsyncAdapt_dbapi_module = object  # type: ignore[assignment,misc]
 from sqlalchemy import pool as pool_module
-from sqlalchemy.engine.interfaces import ConnectArgsType, DBAPIModule
+from sqlalchemy.engine.interfaces import ConnectArgsType
+from sqlalchemy_cubrid._compat import DBAPIModule
 from sqlalchemy.engine.url import URL
 from sqlalchemy.util.concurrency import await_only
 

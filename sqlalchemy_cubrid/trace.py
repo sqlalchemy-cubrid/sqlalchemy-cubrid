@@ -75,9 +75,10 @@ def trace_query(
         connection.execute(text("SET TRACE ON"))
 
         if parameters is not None:
-            connection.execute(statement, parameters)
+            stmt_result = connection.execute(statement, parameters)
         else:
-            connection.execute(statement)
+            stmt_result = connection.execute(statement)
+        stmt_result.close()
 
         result = connection.execute(text("SHOW TRACE"))
         try:

@@ -48,7 +48,8 @@ class TestTraceQuery:
 
         # execute calls: SET TRACE ON, the statement, SHOW TRACE, SET TRACE OFF
         call_count = [0]
-        results = [None, None, trace_result, None]
+        stmt_result = MagicMock()
+        results = [None, stmt_result, trace_result, None]
 
         def side_effect(*args, **kwargs):
             idx = call_count[0]
@@ -73,7 +74,8 @@ class TestTraceQuery:
         trace_result.fetchall.return_value = [("trace output",)]
 
         call_count = [0]
-        results = [None, None, trace_result, None]
+        stmt_result = MagicMock()
+        results = [None, stmt_result, trace_result, None]
 
         def side_effect(*args, **kwargs):
             idx = call_count[0]
@@ -100,7 +102,8 @@ class TestTraceQuery:
         trace_result.fetchall.return_value = []
 
         call_count = [0]
-        results = [None, None, trace_result, None]
+        stmt_result = MagicMock()
+        results = [None, stmt_result, trace_result, None]
 
         def side_effect(*args, **kwargs):
             idx = call_count[0]
@@ -123,7 +126,8 @@ class TestTraceQuery:
         trace_result.fetchall.return_value = [(None,), ("actual trace",), (None,)]
 
         call_count = [0]
-        results = [None, None, trace_result, None]
+        stmt_result = MagicMock()
+        results = [None, stmt_result, trace_result, None]
 
         def side_effect(*args, **kwargs):
             idx = call_count[0]
@@ -179,7 +183,8 @@ class TestTraceQuery:
         ]
 
         call_count = [0]
-        results = [None, None, trace_result, None]
+        stmt_result = MagicMock()
+        results = [None, stmt_result, trace_result, None]
 
         def side_effect(*args, **kwargs):
             idx = call_count[0]

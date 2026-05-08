@@ -1503,22 +1503,14 @@ class TestCoverageEdgeCases:
         sql = _compile(stmt)
         assert "ON DUPLICATE KEY UPDATE" in sql
 
-    def test_on_duplicate_key_update_non_matching_column_warning(self):
-        """compiler.py lines 177-180: non-matching column warning."""
-        import warnings
+    def test_on_duplicate_key_update_non_matching_column_raises(self):
+        """compiler.py: non-matching columns should raise CompileError."""
         from sqlalchemy_cubrid.dml import insert
 
         stmt = insert(users).values(id=1, name="test", email="test@example.com")
         stmt = stmt.on_duplicate_key_update(nonexistent_column="value")
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
+        with pytest.raises(CompileError, match="no effective columns"):
             _compile(stmt)
-            # Should warn about non-matching column
-            assert len(w) >= 1
-            assert (
-                "nonexistent_column" in str(w[0].message)
-                or "not matching" in str(w[0].message).lower()
-            )
 
     def test_merge_missing_target_raises(self):
         """compiler.py line 202: MERGE with _target = None."""
@@ -1533,8 +1525,8 @@ class TestCoverageEdgeCases:
         with pytest.raises(Exception, match="requires a target table"):
             _compile(stmt)
 
-    def test_merge_resolve_target_column_string_not_in_target(self):
-        """compiler.py line 218: _resolve_target_column with string key not in target_columns."""
+    def test_merge_resolve_target_column_string_not_in_target_raises(self):
+        """compiler.py: unknown string key in MERGE WHEN MATCHED must raise CompileError."""
         from sqlalchemy_cubrid.dml import merge
 
         source = Table(
@@ -1545,11 +1537,9 @@ class TestCoverageEdgeCases:
             extend_existing=True,
         )
         stmt = merge(users).using(source).on(users.c.id == source.c.id)
-        # Use a string key that's NOT in users.c
         stmt = stmt.when_matched_then_update({"nonexistent_col": "value"})
-        sql = _compile(stmt)
-        assert "WHEN MATCHED THEN UPDATE SET" in sql
-        assert "nonexistent_col" in sql
+        with pytest.raises(CompileError, match="not found in target table"):
+            _compile(stmt)
 
     def test_merge_resolve_target_column_with_name_attr(self):
         """compiler.py line 221: _resolve_target_column with object that has name attr."""

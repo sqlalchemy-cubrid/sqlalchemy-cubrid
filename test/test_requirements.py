@@ -71,7 +71,7 @@ class TestRequirements:
             ("window_functions", True),
             ("intersect", True),
             ("except_", True),
-            ("fetch_no_order", True),
+            ("fetch_no_order", False),
             ("order_by_col_from_union", True),
         ],
     )

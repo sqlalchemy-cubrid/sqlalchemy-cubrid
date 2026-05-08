@@ -13,7 +13,8 @@ import logging
 from importlib import import_module
 from typing import Any, Callable, cast
 
-from sqlalchemy.engine.interfaces import DBAPIConnection, DBAPIModule, ConnectArgsType
+from sqlalchemy.engine.interfaces import DBAPIConnection, ConnectArgsType
+from sqlalchemy_cubrid._compat import DBAPIModule
 from sqlalchemy.engine.url import URL
 
 from sqlalchemy_cubrid.base import CubridExecutionContext

@@ -1,8 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from sqlalchemy.sql import elements, visitors
+
+# DBAPIModule was added in SQLAlchemy 2.1; fall back to Any for 2.0 compat.
+try:
+    from sqlalchemy.engine.interfaces import DBAPIModule
+except ImportError:  # pragma: no cover — SA 2.0
+    DBAPIModule = Any  # type: ignore[assignment,misc]
 
 
 def is_literal_value(value: Any) -> bool:
