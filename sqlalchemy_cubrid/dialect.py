@@ -147,7 +147,8 @@ ischema_names = {
     "CHAR": CHAR,
     "VARCHAR": VARCHAR,
     "NCHAR": NCHAR,
-    "CHAR VARYING": NVARCHAR,
+    "CHAR VARYING": VARCHAR,
+    "NCHAR VARYING": NVARCHAR,
     "STRING": STRING,
     # LOB
     "BLOB": BLOB,
@@ -307,7 +308,7 @@ class CubridDialect(default.DefaultDialect):
             # Strip length/precision from type string for lookup
             coltype_key = _RE_TYPE_PARAMS.sub("", coltype_raw).strip()
 
-            if coltype_key in ("CHAR", "VARCHAR", "NCHAR", "CHAR VARYING"):
+            if coltype_key in ("CHAR", "VARCHAR", "NCHAR", "CHAR VARYING", "NCHAR VARYING"):
                 length_match = _RE_LENGTH.search(coltype_raw)
                 length = int(length_match.group(1)) if length_match else None
                 coltype = self.ischema_names[coltype_key](length)  # pyright: ignore[reportCallIssue, reportArgumentType]

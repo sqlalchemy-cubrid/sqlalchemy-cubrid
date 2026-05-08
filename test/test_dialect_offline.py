@@ -369,6 +369,32 @@ class TestReflectionMethods:
         assert columns[4]["type"].timezone is True  # DATETIMETZ
         assert columns[5]["type"].timezone is True  # DATETIMELTZ
 
+    def test_get_columns_char_varying_and_nchar_varying_reflection(self):
+        """Regression: CHAR VARYING/NCHAR VARYING reflection maps to VARCHAR/NVARCHAR with correct lengths. (#201)"""
+        dialect = CubridDialect()
+        connection = MagicMock()
+        connection.info_cache = {}
+        connection.dialect_options = {}
+
+        rows = [
+            ("char_var_col", "CHAR VARYING(50)", "YES", "", None, ""),
+            ("nchar_var_col", "NCHAR VARYING(20)", "NO", "", None, ""),
+        ]
+        comment_rows = []
+        connection.execute.side_effect = [rows, comment_rows]
+
+        columns = _invoke_reflection(dialect, "get_columns", connection, "char_varying_table")
+
+        assert len(columns) == 2
+
+        assert columns[0]["type"].__class__.__name__ == "VARCHAR"
+        assert columns[0]["type"].length == 50
+        assert columns[0]["nullable"] is True
+
+        assert columns[1]["type"].__class__.__name__ == "NVARCHAR"
+        assert columns[1]["type"].length == 20
+        assert columns[1]["nullable"] is False
+
 
     def test_get_pk_constraint_with_primary_key_and_constraint_name(self):
         dialect = CubridDialect()

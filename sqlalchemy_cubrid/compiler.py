@@ -285,6 +285,9 @@ class CubridCompiler(compiler.SQLCompiler):
                     return target_columns[column_key]
                 return None
             if hasattr(column_key, "name"):
+                name = column_key.name
+                if target_columns is not None and name in target_columns:
+                    return target_columns[name]
                 return column_key
             return None
 

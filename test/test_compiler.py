@@ -1578,6 +1578,36 @@ class TestCoverageEdgeCases:
         sql = _compile(stmt)
         assert "WHEN MATCHED THEN UPDATE SET" in sql
 
+    def test_merge_resolve_target_column_validates_column_against_target(self):
+        """compiler.py line 227-229: _resolve_target_column validates Column objects against target_columns. (#202)"""
+        from sqlalchemy_cubrid.dml import merge
+
+        source = Table(
+            "src7",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(100)),
+            extend_existing=True,
+        )
+        
+        # Test 1: Column object that IS in target_columns returns the target column
+        stmt = merge(users).using(source).on(users.c.id == source.c.id)
+        stmt = stmt.when_matched_then_update({users.c.name: source.c.name})
+        sql = _compile(stmt)
+        assert "WHEN MATCHED THEN UPDATE SET" in sql
+        
+        # Test 2: Column-like object without proper target metadata still compiles
+        # by accepting the object as-is (fallback behavior)
+        non_target_col = Column("external_col", String(50))
+        stmt2 = merge(users).using(source).on(users.c.id == source.c.id)
+        stmt2._when_matched = {
+            "values": {non_target_col: source.c.name}  # Column not in users table
+        }
+        stmt2._when_not_matched = None
+        sql2 = _compile(stmt2)
+        # Should still compile - fallback accepts the Column object
+        assert "WHEN MATCHED THEN UPDATE SET" in sql2
+
     def test_merge_empty_matched_values_raises(self):
         """compiler.py line 248: MERGE WHEN MATCHED with empty values."""
         from sqlalchemy_cubrid.dml import merge
