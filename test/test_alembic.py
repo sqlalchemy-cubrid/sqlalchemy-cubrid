@@ -308,8 +308,9 @@ class TestCubridImplAutogenerate:
 
         rendered = impl.render_type(cubrid_types.SET(sa.String(), sa.Integer()), autogen_context)
 
-        assert rendered == "cubrid_types.SET(String, Integer)"
+        assert rendered == "cubrid_types.SET(sa.String(), sa.Integer())"
         assert "from sqlalchemy_cubrid import types as cubrid_types" in autogen_context.imports
+        assert "import sqlalchemy as sa" in autogen_context.imports
 
     def test_render_type_non_cubrid_type_returns_false(self):
         from sqlalchemy_cubrid.alembic_impl import CubridImpl

@@ -326,6 +326,36 @@ class SEQUENCE(_StringType):
         super().__init__(**kw)
 
 
+
+# ---------------------------------------------------------------------------
+# Timezone-aware Date/Time Types
+# ---------------------------------------------------------------------------
+
+
+class TIMESTAMPTZ(sqltypes.TIMESTAMP):
+    """CUBRID TIMESTAMPTZ — timestamp with explicit timezone."""
+
+    __visit_name__ = "TIMESTAMPTZ"
+
+
+class TIMESTAMPLTZ(sqltypes.TIMESTAMP):
+    """CUBRID TIMESTAMPLTZ — timestamp with local timezone."""
+
+    __visit_name__ = "TIMESTAMPLTZ"
+
+
+class DATETIMETZ(sqltypes.DATETIME):
+    """CUBRID DATETIMETZ — datetime with explicit timezone."""
+
+    __visit_name__ = "DATETIMETZ"
+
+
+class DATETIMELTZ(sqltypes.DATETIME):
+    """CUBRID DATETIMELTZ — datetime with local timezone."""
+
+    __visit_name__ = "DATETIMELTZ"
+
+
 # ---------------------------------------------------------------------------
 # Monetary Type
 # ---------------------------------------------------------------------------

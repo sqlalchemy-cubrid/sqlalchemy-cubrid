@@ -290,7 +290,10 @@ class CubridCompiler(compiler.SQLCompiler):
                 return column_key
             return None
 
-        def _render_column_name(column_key: Any) -> str:
+        def _render_column_name(column_key: Any, resolved: Any | None = None) -> str:
+            # If we resolved a target column, always use its actual DB name
+            if resolved is not None and hasattr(resolved, "name"):
+                return self.preparer.quote(resolved.name)
             if isinstance(column_key, str):
                 return self.preparer.quote(column_key)
             if hasattr(column_key, "name"):
@@ -327,7 +330,7 @@ class CubridCompiler(compiler.SQLCompiler):
                         f"MERGE WHEN MATCHED: column '{column_key}' not found in target table"
                     )
                 set_clauses.append(
-                    f"{_render_column_name(column_key)} = {_render_value(value, target_column)}"
+                    f"{_render_column_name(column_key, target_column)} = {_render_value(value, target_column)}"
                 )
 
             matched_clause = f"WHEN MATCHED THEN UPDATE SET {', '.join(set_clauses)}"  # nosec B608
@@ -362,7 +365,7 @@ class CubridCompiler(compiler.SQLCompiler):
                     raise exc.CompileError(
                         f"MERGE WHEN NOT MATCHED: column '{column_key}' not found in target table"
                     )
-                rendered_columns.append(_render_column_name(column_key))
+                rendered_columns.append(_render_column_name(column_key, target_column))
                 rendered_values.append(_render_value(value, target_column))
 
             not_matched_clause = (
@@ -588,6 +591,18 @@ class CubridTypeCompiler(compiler.GenericTypeCompiler):
         if getattr(type_, "timezone", False):
             return "TIMESTAMPLTZ"
         return "TIMESTAMP"
+
+    def visit_TIMESTAMPTZ(self, type_: Any, **kw: Any) -> str:
+        return "TIMESTAMPTZ"
+
+    def visit_TIMESTAMPLTZ(self, type_: Any, **kw: Any) -> str:
+        return "TIMESTAMPLTZ"
+
+    def visit_DATETIMETZ(self, type_: Any, **kw: Any) -> str:
+        return "DATETIMETZ"
+
+    def visit_DATETIMELTZ(self, type_: Any, **kw: Any) -> str:
+        return "DATETIMELTZ"
 
     def visit_VARCHAR(self, type_: Any, **kw: Any) -> str:
         if hasattr(type_, "national") and type_.national:
