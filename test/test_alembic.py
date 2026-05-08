@@ -312,6 +312,17 @@ class TestCubridImplAutogenerate:
         assert "from sqlalchemy_cubrid import types as cubrid_types" in autogen_context.imports
         assert "import sqlalchemy as sa" in autogen_context.imports
 
+    def test_render_type_collection_preserves_type_args(self):
+        from sqlalchemy_cubrid.alembic_impl import CubridImpl
+
+        impl = object.__new__(CubridImpl)
+        autogen_context = _AutogenContext()
+
+        rendered = impl.render_type(cubrid_types.SET(sa.String(50), sa.Numeric(10, 2)), autogen_context)
+
+        assert rendered == "cubrid_types.SET(sa.String(length=50), sa.Numeric(precision=10, scale=2))"
+        assert "import sqlalchemy as sa" in autogen_context.imports
+
     def test_render_type_non_cubrid_type_returns_false(self):
         from sqlalchemy_cubrid.alembic_impl import CubridImpl
 

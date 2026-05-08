@@ -110,10 +110,9 @@ class CubridImpl(DefaultImpl):
             if isinstance(value, str):
                 rendered_values.append(repr(value))
             elif isinstance(value, sa.types.TypeEngine):
-                type_cls_name = value.__class__.__name__
-                # Render as sa.TypeName() for import safety
+                # Render as sa.TypeName(...) preserving constructor args
                 autogen_context.imports.add("import sqlalchemy as sa")
-                rendered_values.append(f"sa.{type_cls_name}()")
+                rendered_values.append(f"sa.{repr(value)}")
             else:
                 rendered_values.append(repr(value))
 

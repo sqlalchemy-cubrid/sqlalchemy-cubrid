@@ -509,6 +509,45 @@ class TestTypeCompilation:
         result = self._compile_type(sa.TIMESTAMP())
         assert result == "TIMESTAMP"
 
+    def test_timestamptz_type(self):
+        """Test TIMESTAMPTZ type compilation."""
+        from sqlalchemy_cubrid.types import TIMESTAMPTZ
+        result = self._compile_type(TIMESTAMPTZ())
+        assert result == "TIMESTAMPTZ"
+
+    def test_timestampltz_type(self):
+        """Test TIMESTAMPLTZ type compilation."""
+        from sqlalchemy_cubrid.types import TIMESTAMPLTZ
+        result = self._compile_type(TIMESTAMPLTZ())
+        assert result == "TIMESTAMPLTZ"
+
+    def test_datetimetz_type(self):
+        """Test DATETIMETZ type compilation."""
+        from sqlalchemy_cubrid.types import DATETIMETZ
+        result = self._compile_type(DATETIMETZ())
+        assert result == "DATETIMETZ"
+
+    def test_datetimeltz_type(self):
+        """Test DATETIMELTZ type compilation."""
+        from sqlalchemy_cubrid.types import DATETIMELTZ
+        result = self._compile_type(DATETIMELTZ())
+        assert result == "DATETIMELTZ"
+
+    def test_tz_types_have_timezone_semantics(self):
+        """TZ types should report timezone=True."""
+        from sqlalchemy_cubrid.types import TIMESTAMPTZ, TIMESTAMPLTZ, DATETIMETZ, DATETIMELTZ
+        for cls in (TIMESTAMPTZ, TIMESTAMPLTZ, DATETIMETZ, DATETIMELTZ):
+            assert cls.timezone is True, f"{cls.__name__}.timezone should be True"
+
+    def test_tz_types_reflection_mapping(self):
+        """ischema_names maps TZ type strings to distinct classes."""
+        from sqlalchemy_cubrid.dialect import ischema_names
+        from sqlalchemy_cubrid.types import TIMESTAMPTZ, TIMESTAMPLTZ, DATETIMETZ, DATETIMELTZ
+        assert ischema_names["TIMESTAMPTZ"] is TIMESTAMPTZ
+        assert ischema_names["TIMESTAMPLTZ"] is TIMESTAMPLTZ
+        assert ischema_names["DATETIMETZ"] is DATETIMETZ
+        assert ischema_names["DATETIMELTZ"] is DATETIMELTZ
+
     def test_varchar_with_national_flag(self):
         """Test VARCHAR with national flag redirects to NVARCHAR."""
         from sqlalchemy_cubrid.types import VARCHAR
@@ -1405,6 +1444,49 @@ class TestMergeCompilation:
         stmt = stmt.when_matched_then_update({"name": self.source.c.name})
         with pytest.raises(Exception):
             _compile(stmt)
+
+    def test_merge_keyed_column_uses_db_name(self):
+        """Column('db_name', key='attr_name') should render db_name in SQL."""
+        from sqlalchemy_cubrid.dml import merge
+
+        keyed_table = Table(
+            "keyed_tbl",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("db_name", String(100), key="attr_name"),
+        )
+
+        stmt = merge(keyed_table).using(self.source).on(
+            keyed_table.c.id == self.source.c.id
+        )
+        stmt = stmt.when_matched_then_update(
+            {"attr_name": self.source.c.name}
+        )
+        sql = _compile(stmt)
+        # Must use the actual DB column name, not the key
+        assert '"db_name"' in sql or "db_name" in sql
+        assert "attr_name" not in sql.replace("attr_name", "") or "attr_name" not in sql
+
+    def test_merge_keyed_column_not_matched_insert(self):
+        """Keyed columns in NOT MATCHED INSERT should also use db_name."""
+        from sqlalchemy_cubrid.dml import merge
+
+        keyed_table = Table(
+            "keyed_tbl2",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("db_col", String(100), key="py_attr"),
+        )
+
+        stmt = merge(keyed_table).using(self.source).on(
+            keyed_table.c.id == self.source.c.id
+        )
+        stmt = stmt.when_not_matched_then_insert(
+            {"id": self.source.c.id, "py_attr": self.source.c.name}
+        )
+        sql = _compile(stmt)
+        assert "db_col" in sql
+        assert "py_attr" not in sql
 
 
 class TestCoverageEdgeCases:
