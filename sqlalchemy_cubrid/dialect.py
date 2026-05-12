@@ -86,6 +86,8 @@ _RE_LENGTH = re.compile(r"\((\d+)\)")
 
 def _split_collection_members(inner: str) -> list[str]:
     """Split collection member types respecting parenthesis depth."""
+    if not inner.strip():
+        return []
     parts: list[str] = []
     depth = 0
     start = 0
@@ -94,6 +96,8 @@ def _split_collection_members(inner: str) -> list[str]:
             depth += 1
         elif ch == ")":
             depth -= 1
+            if depth < 0:
+                return [inner]
         elif ch == "," and depth == 0:
             parts.append(inner[start:i])
             start = i + 1

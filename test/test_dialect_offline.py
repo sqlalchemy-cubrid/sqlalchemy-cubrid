@@ -10,6 +10,34 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy.engine import url
 
 from sqlalchemy_cubrid.dialect import CubridDialect
+from sqlalchemy_cubrid.dialect import _split_collection_members
+
+
+class TestSplitCollectionMembers:
+    def test_single_simple_member(self) -> None:
+        assert _split_collection_members("INT") == ["INT"]
+
+    def test_single_member_with_params(self) -> None:
+        assert _split_collection_members("NUMERIC(10,2)") == ["NUMERIC(10,2)"]
+
+    def test_multiple_members_with_params(self) -> None:
+        assert _split_collection_members("NUMERIC(10,2),VARCHAR(50)") == [
+            "NUMERIC(10,2)",
+            "VARCHAR(50)",
+        ]
+
+    def test_nested_parentheses(self) -> None:
+        assert _split_collection_members("SET(INT),VARCHAR(50)") == [
+            "SET(INT)",
+            "VARCHAR(50)",
+        ]
+
+    def test_empty_input(self) -> None:
+        assert _split_collection_members("") == []
+        assert _split_collection_members("   ") == []
+
+    def test_unbalanced_close_paren_returns_whole(self) -> None:
+        assert _split_collection_members("INT)") == ["INT)"]
 
 
 def _invoke_reflection(dialect, method_name, connection, *args, **kwargs):
