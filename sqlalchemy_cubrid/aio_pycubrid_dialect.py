@@ -44,14 +44,14 @@ class AsyncAdapt_pycubrid_connection(AsyncAdapt_dbapi_connection):
 
     @property
     def autocommit(self) -> bool:
-        return self._connection.autocommit  # type: ignore[union-attr]
+        return bool(self._connection.autocommit)
 
     @autocommit.setter
     def autocommit(self, value: bool) -> None:
-        self.await_(self._connection.set_autocommit(value))  # type: ignore[union-attr]
+        self.await_(self._connection.set_autocommit(value))
 
     def ping(self, reconnect: bool = True) -> bool:
-        return self.await_(self._connection.ping(reconnect))  # type: ignore[union-attr]
+        return bool(self.await_(self._connection.ping(reconnect)))
 
 
 class AsyncAdapt_pycubrid_dbapi(AsyncAdapt_dbapi_module):

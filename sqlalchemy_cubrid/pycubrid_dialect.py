@@ -30,7 +30,7 @@ class PyCubridExecutionContext(CubridExecutionContext):
     so we use it directly instead of the CUBRIDdb workaround.
     """
 
-    def get_lastrowid(self) -> int | None:
+    def get_lastrowid(self) -> int | None:  # type: ignore[override]
         """Return the last inserted row ID from pycubrid's cursor."""
         try:
             lastrowid = self.cursor.lastrowid

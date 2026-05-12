@@ -10,6 +10,16 @@ try:
 except ImportError:  # pragma: no cover — SA 2.0
     DBAPIModule = Any  # type: ignore[assignment,misc]
 
+__all__ = [
+    "DBAPIModule",
+    "is_literal_value",
+    "bind_with_type",
+    "get_for_update_arg",
+    "get_limit_clause",
+    "get_offset_clause",
+    "get_distinct",
+]
+
 
 def is_literal_value(value: Any) -> bool:
     """Check if value is a plain Python literal (not a SQL element or schema object)."""

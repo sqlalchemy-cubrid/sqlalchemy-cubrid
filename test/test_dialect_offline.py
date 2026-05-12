@@ -44,7 +44,7 @@ class TestDialectBasics:
             return real_import(name, *args, **kwargs)
 
         with patch("builtins.__import__", side_effect=_fake_import):
-            with pytest.raises(ImportError, match="driver missing"):
+            with pytest.raises(ImportError, match="Could not import CUBRIDdb"):
                 CubridDialect.import_dbapi()
 
     def test_legacy_dbapi_method_calls_import_dbapi(self):

@@ -402,7 +402,7 @@ class CubridExecutionContext(default.DefaultExecutionContext):
     def should_autocommit_text(self, statement: str) -> Any:
         return AUTOCOMMIT_REGEXP.match(statement)
 
-    def get_lastrowid(self) -> int | None:
+    def get_lastrowid(self) -> int | None:  # type: ignore[override]
         """Return the last inserted row ID.
 
         CUBRID's Python driver does not expose ``cursor.lastrowid``.

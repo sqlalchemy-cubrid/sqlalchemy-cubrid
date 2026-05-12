@@ -245,7 +245,14 @@ class CubridDialect(default.DefaultDialect):
     @classmethod
     def import_dbapi(cls) -> DBAPIModule:
         """Import and return the CUBRID DBAPI module (SA 2.0 API)."""
-        import CUBRIDdb as cubrid_dbapi  # type: ignore[import-not-found]  # pyright: ignore[reportMissingImports]
+        try:
+            import CUBRIDdb as cubrid_dbapi  # type: ignore[import-not-found]  # pyright: ignore[reportMissingImports]
+        except ImportError as e:
+            raise ImportError(
+                "Could not import CUBRIDdb. Install 'CUBRID-Python' for "
+                "cubrid:// URLs, or use cubrid+pycubrid:// with 'pycubrid': "
+                "pip install CUBRID-Python"
+            ) from e
         return cast(DBAPIModule, cubrid_dbapi)  # pyright: ignore[reportInvalidCast]
 
     # Keep legacy dbapi() for SA 1.x compat if needed
@@ -494,7 +501,7 @@ class CubridDialect(default.DefaultDialect):
         return [row[0] for row in result]
 
     @reflection.cache
-    def get_view_definition(  # type: ignore[override]
+    def get_view_definition(
         self, connection: Any, view_name: str, schema: str | None = None, **kw: Any
     ) -> str:
         """Return the CREATE VIEW definition."""

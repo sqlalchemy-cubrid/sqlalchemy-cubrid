@@ -142,9 +142,7 @@ class CubridCompiler(compiler.SQLCompiler):
         limit = update_stmt.kwargs.get(f"{self.dialect.name}_limit", None)
         if limit is not None:
             if type(limit) is not int or limit < 0:
-                raise CompileError(
-                    "cubrid_limit must be a non-negative integer, got %r" % (limit,)
-                )
+                raise CompileError("cubrid_limit must be a non-negative integer, got %r" % (limit,))
             return f"LIMIT {limit}"
         return None
 
@@ -243,9 +241,7 @@ class CubridCompiler(compiler.SQLCompiler):
             )
 
         if not clauses:
-            raise CompileError(
-                "ON DUPLICATE KEY UPDATE has no effective columns to update"
-            )
+            raise CompileError("ON DUPLICATE KEY UPDATE has no effective columns to update")
 
         return f"ON DUPLICATE KEY UPDATE {', '.join(clauses)}"
 
@@ -263,7 +259,6 @@ class CubridCompiler(compiler.SQLCompiler):
             raise exc.CompileError(
                 "MERGE statement must include WHEN MATCHED and/or WHEN NOT MATCHED"
             )
-
 
     def visit_merge(self, merge_stmt: Any, **kw: Any) -> str:
         from sqlalchemy import exc
@@ -570,12 +565,12 @@ class CubridTypeCompiler(compiler.GenericTypeCompiler):
         return compiled
 
     def visit_datetime(self, type_: Any, **kw: Any) -> str:
-        if getattr(type_, 'timezone', False):
+        if getattr(type_, "timezone", False):
             return "DATETIMETZ"
         return "DATETIME"
 
     def visit_DATETIME(self, type_: Any, **kw: Any) -> str:
-        if getattr(type_, 'timezone', False):
+        if getattr(type_, "timezone", False):
             return "DATETIMETZ"
         return "DATETIME"
 
@@ -586,7 +581,7 @@ class CubridTypeCompiler(compiler.GenericTypeCompiler):
         return "TIME"
 
     def visit_TIMESTAMP(self, type_: Any, **kw: Any) -> str:
-        if getattr(type_, 'timezone', False):
+        if getattr(type_, "timezone", False):
             return "TIMESTAMPLTZ"
         return "TIMESTAMP"
 

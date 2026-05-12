@@ -389,7 +389,7 @@ class _FormatTypeMixin:
             value = self._format_value(value)
             if super_proc:
                 value = super_proc(value)
-            return value
+            return str(value)
 
         return process
 
@@ -425,7 +425,7 @@ class JSONPathType(_FormatTypeMixin, sqltypes.JSON.JSONPathType):
         )
 
 
-class JSON(sqltypes.JSON):  # type: ignore[type-arg]
+class JSON(sqltypes.JSON):
     """CUBRID JSON type.
 
     CUBRID supports JSON as of version 10.2 (RFC 7159 compliant).
