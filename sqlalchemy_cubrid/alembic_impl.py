@@ -90,7 +90,7 @@ class CubridImpl(DefaultImpl):
         if isinstance(value, str):
             return value.strip().lower()
         if isinstance(value, sa.types.TypeEngine):
-            return value.__class__.__name__.lower()
+            return repr(value).strip().lower()
         return repr(value).strip().lower()
 
     def render_type(

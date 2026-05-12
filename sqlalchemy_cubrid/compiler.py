@@ -284,9 +284,7 @@ class CubridCompiler(compiler.SQLCompiler):
                 if target_columns is not None and name in target_columns:
                     return target_columns[name]
                 if target_columns is not None:
-                    raise exc.CompileError(
-                        f"MERGE: column '{name}' not found in target table"
-                    )
+                    raise exc.CompileError(f"MERGE: column '{name}' not found in target table")
                 return column_key
             return None
 
@@ -671,7 +669,7 @@ class CubridTypeCompiler(compiler.GenericTypeCompiler):
             if isinstance(value, str):
                 parts.append(value)
             else:
-                parts.append(value.__visit_name__)
+                parts.append(self.process(value))
         return f"{collection_type}({','.join(parts)})"
 
     def visit_JSON(self, type_: Any, **kw: Any) -> str:

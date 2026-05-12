@@ -428,19 +428,19 @@ class TestTypeCompilation:
         from sqlalchemy_cubrid.types import SET, CHAR
 
         result = self._compile_type(SET(CHAR(10)))
-        assert result == "SET(CHAR)"
+        assert result == "SET(CHAR(10))"
 
     def test_multiset_collection(self):
         from sqlalchemy_cubrid.types import MULTISET, VARCHAR
 
         result = self._compile_type(MULTISET(VARCHAR(255)))
-        assert result == "MULTISET(VARCHAR)"
+        assert result == "MULTISET(VARCHAR(255))"
 
     def test_sequence_collection(self):
         from sqlalchemy_cubrid.types import SEQUENCE
 
         result = self._compile_type(SEQUENCE(sa.Integer()))
-        assert result == "SEQUENCE(integer)"
+        assert result == "SEQUENCE(INTEGER)"
 
     def test_string_type(self):
         from sqlalchemy_cubrid.types import STRING
@@ -512,30 +512,35 @@ class TestTypeCompilation:
     def test_timestamptz_type(self):
         """Test TIMESTAMPTZ type compilation."""
         from sqlalchemy_cubrid.types import TIMESTAMPTZ
+
         result = self._compile_type(TIMESTAMPTZ())
         assert result == "TIMESTAMPTZ"
 
     def test_timestampltz_type(self):
         """Test TIMESTAMPLTZ type compilation."""
         from sqlalchemy_cubrid.types import TIMESTAMPLTZ
+
         result = self._compile_type(TIMESTAMPLTZ())
         assert result == "TIMESTAMPLTZ"
 
     def test_datetimetz_type(self):
         """Test DATETIMETZ type compilation."""
         from sqlalchemy_cubrid.types import DATETIMETZ
+
         result = self._compile_type(DATETIMETZ())
         assert result == "DATETIMETZ"
 
     def test_datetimeltz_type(self):
         """Test DATETIMELTZ type compilation."""
         from sqlalchemy_cubrid.types import DATETIMELTZ
+
         result = self._compile_type(DATETIMELTZ())
         assert result == "DATETIMELTZ"
 
     def test_tz_types_have_timezone_semantics(self):
         """TZ types should report timezone=True."""
         from sqlalchemy_cubrid.types import TIMESTAMPTZ, TIMESTAMPLTZ, DATETIMETZ, DATETIMELTZ
+
         for cls in (TIMESTAMPTZ, TIMESTAMPLTZ, DATETIMETZ, DATETIMELTZ):
             assert cls.timezone is True, f"{cls.__name__}.timezone should be True"
 
@@ -543,6 +548,7 @@ class TestTypeCompilation:
         """ischema_names maps TZ type strings to distinct classes."""
         from sqlalchemy_cubrid.dialect import ischema_names
         from sqlalchemy_cubrid.types import TIMESTAMPTZ, TIMESTAMPLTZ, DATETIMETZ, DATETIMELTZ
+
         assert ischema_names["TIMESTAMPTZ"] is TIMESTAMPTZ
         assert ischema_names["TIMESTAMPLTZ"] is TIMESTAMPLTZ
         assert ischema_names["DATETIMETZ"] is DATETIMETZ
@@ -1456,12 +1462,8 @@ class TestMergeCompilation:
             Column("db_name", String(100), key="attr_name"),
         )
 
-        stmt = merge(keyed_table).using(self.source).on(
-            keyed_table.c.id == self.source.c.id
-        )
-        stmt = stmt.when_matched_then_update(
-            {"attr_name": self.source.c.name}
-        )
+        stmt = merge(keyed_table).using(self.source).on(keyed_table.c.id == self.source.c.id)
+        stmt = stmt.when_matched_then_update({"attr_name": self.source.c.name})
         sql = _compile(stmt)
         # Must use the actual DB column name, not the key
         assert '"db_name"' in sql or "db_name" in sql
@@ -1478,9 +1480,7 @@ class TestMergeCompilation:
             Column("db_col", String(100), key="py_attr"),
         )
 
-        stmt = merge(keyed_table).using(self.source).on(
-            keyed_table.c.id == self.source.c.id
-        )
+        stmt = merge(keyed_table).using(self.source).on(keyed_table.c.id == self.source.c.id)
         stmt = stmt.when_not_matched_then_insert(
             {"id": self.source.c.id, "py_attr": self.source.c.name}
         )

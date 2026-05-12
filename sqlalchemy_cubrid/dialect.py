@@ -80,6 +80,7 @@ log = logging.getLogger(__name__)
 # Pre-compiled patterns for column type parsing in get_columns().
 # Avoids re-compilation on every reflection call.
 _RE_TYPE_PARAMS = re.compile(r"\([\d,]+\)")
+_RE_COLLECTION = re.compile(r"^(SET|MULTISET|SEQUENCE)\s*\((.+)\)$", re.IGNORECASE)
 _RE_LENGTH = re.compile(r"\((\d+)\)")
 _RE_PRECISION_SCALE = re.compile(r"\((\d+)(?:,\s*(\d+))?\)")
 
@@ -319,7 +320,37 @@ class CubridDialect(default.DefaultDialect):
             # Strip length/precision from type string for lookup
             coltype_key = _RE_TYPE_PARAMS.sub("", coltype_raw).strip()
 
-            if coltype_key in ("CHAR", "VARCHAR", "NCHAR", "CHAR VARYING", "NCHAR VARYING"):
+            # Collection types: SET(VARCHAR(100)), MULTISET(INT), etc.
+            collection_match = _RE_COLLECTION.match(coltype_raw)
+            if collection_match:
+                coll_name = collection_match.group(1).upper()
+                inner_raw = collection_match.group(2)
+                coll_cls = self.ischema_names[coll_name]
+                members: list[Any] = []
+                for member_str in inner_raw.split(","):
+                    member_str = member_str.strip()
+                    member_key = _RE_TYPE_PARAMS.sub("", member_str).strip()
+                    if member_key in ("CHAR", "VARCHAR", "NCHAR", "CHAR VARYING", "NCHAR VARYING"):
+                        length_match = _RE_LENGTH.search(member_str)
+                        length = int(length_match.group(1)) if length_match else None
+                        members.append(self.ischema_names[member_key](length))  # pyright: ignore[reportCallIssue, reportArgumentType]
+                    elif member_key in ("NUMERIC", "DECIMAL"):
+                        params_match = _RE_PRECISION_SCALE.search(member_str)
+                        if params_match:
+                            precision = int(params_match.group(1))
+                            scale = int(params_match.group(2)) if params_match.group(2) else None
+                            members.append(
+                                self.ischema_names[member_key](precision=precision, scale=scale)
+                            )  # pyright: ignore[reportCallIssue]
+                        else:
+                            members.append(self.ischema_names[member_key]())
+                    elif member_key in self.ischema_names:
+                        cls = self.ischema_names[member_key]
+                        members.append(cls() if callable(cls) else cls)
+                    else:
+                        members.append(member_str)
+                coltype = coll_cls(*members)
+            elif coltype_key in ("CHAR", "VARCHAR", "NCHAR", "CHAR VARYING", "NCHAR VARYING"):
                 length_match = _RE_LENGTH.search(coltype_raw)
                 length = int(length_match.group(1)) if length_match else None
                 coltype = self.ischema_names[coltype_key](length)  # pyright: ignore[reportCallIssue, reportArgumentType]

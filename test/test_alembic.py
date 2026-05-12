@@ -318,9 +318,13 @@ class TestCubridImplAutogenerate:
         impl = object.__new__(CubridImpl)
         autogen_context = _AutogenContext()
 
-        rendered = impl.render_type(cubrid_types.SET(sa.String(50), sa.Numeric(10, 2)), autogen_context)
+        rendered = impl.render_type(
+            cubrid_types.SET(sa.String(50), sa.Numeric(10, 2)), autogen_context
+        )
 
-        assert rendered == "cubrid_types.SET(sa.String(length=50), sa.Numeric(precision=10, scale=2))"
+        assert (
+            rendered == "cubrid_types.SET(sa.String(length=50), sa.Numeric(precision=10, scale=2))"
+        )
         assert "import sqlalchemy as sa" in autogen_context.imports
 
     def test_render_type_non_cubrid_type_returns_false(self):
@@ -378,7 +382,7 @@ class TestCubridImplAutogenerate:
         from sqlalchemy_cubrid.alembic_impl import CubridImpl
 
         result = CubridImpl._normalize_collection_value(sa.String())
-        assert result == "string"
+        assert result == "string()"
 
     def test_normalize_collection_value_non_string_non_type(self):
         from sqlalchemy_cubrid.alembic_impl import CubridImpl

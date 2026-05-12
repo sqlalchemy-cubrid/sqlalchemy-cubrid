@@ -395,7 +395,6 @@ class TestReflectionMethods:
         assert columns[1]["type"].length == 20
         assert columns[1]["nullable"] is False
 
-
     def test_get_pk_constraint_with_primary_key_and_constraint_name(self):
         dialect = CubridDialect()
         connection = MagicMock()

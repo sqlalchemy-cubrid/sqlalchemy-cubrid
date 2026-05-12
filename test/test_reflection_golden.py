@@ -173,26 +173,31 @@ class _MockConnectionMultiCol:
     def execute(self, statement: Any, params: Any = None) -> _Result:
         sql = str(statement)
         if sql.startswith("SHOW COLUMNS IN"):
-            return _Result([
-                ("tenant_id", "INTEGER", "NO", "PRI", None, ""),
-                ("item_id", "INTEGER", "NO", "PRI", None, "auto_increment"),
-                ("category", "VARCHAR(50)", "NO", "MUL", None, ""),
-                ("sku", "VARCHAR(100)", "NO", "MUL", None, ""),
-                ("price", "DECIMAL(12,4)", "YES", "", "0.0000", ""),
-            ])
+            return _Result(
+                [
+                    ("tenant_id", "INTEGER", "NO", "PRI", None, ""),
+                    ("item_id", "INTEGER", "NO", "PRI", None, "auto_increment"),
+                    ("category", "VARCHAR(50)", "NO", "MUL", None, ""),
+                    ("sku", "VARCHAR(100)", "NO", "MUL", None, ""),
+                    ("price", "DECIMAL(12,4)", "YES", "", "0.0000", ""),
+                ]
+            )
         if sql.startswith("SHOW INDEXES IN"):
-            return _Result([
-                ("items", 1, "pk_items", 1, "tenant_id"),
-                ("items", 1, "pk_items", 2, "item_id"),
-                ("items", 0, "uq_items_tenant_sku", 1, "tenant_id"),
-                ("items", 0, "uq_items_tenant_sku", 2, "sku"),
-                ("items", 1, "idx_items_category", 1, "category"),
-            ])
+            return _Result(
+                [
+                    ("items", 1, "pk_items", 1, "tenant_id"),
+                    ("items", 1, "pk_items", 2, "item_id"),
+                    ("items", 0, "uq_items_tenant_sku", 1, "tenant_id"),
+                    ("items", 0, "uq_items_tenant_sku", 2, "sku"),
+                    ("items", 1, "idx_items_category", 1, "category"),
+                ]
+            )
         if sql.startswith("SHOW CREATE TABLE"):
-            return _Result([
-                (
-                    "items",
-                    """
+            return _Result(
+                [
+                    (
+                        "items",
+                        """
 CREATE TABLE [items] (
   [tenant_id] INTEGER NOT NULL,
   [item_id] INTEGER NOT NULL AUTO_INCREMENT,
@@ -204,25 +209,30 @@ CREATE TABLE [items] (
   CONSTRAINT [fk_items_tenant] FOREIGN KEY ([tenant_id]) REFERENCES [dba.tenants] ([id]) ON DELETE CASCADE ON UPDATE CASCADE
 )
 """,
-                )
-            ])
+                    )
+                ]
+            )
         if "FROM _db_index" in sql:
-            return _Result([
-                ("pk_items", True, False),
-                ("uq_items_tenant_sku", False, False),
-                ("idx_items_category", False, False),
-                ("fk_items_tenant", False, True),
-            ])
+            return _Result(
+                [
+                    ("pk_items", True, False),
+                    ("uq_items_tenant_sku", False, False),
+                    ("idx_items_category", False, False),
+                    ("fk_items_tenant", False, True),
+                ]
+            )
         if "FROM db_constraint" in sql:
             return _Result([("pk_items",)])
         if "FROM _db_attribute" in sql:
-            return _Result([
-                ("tenant_id", None),
-                ("item_id", None),
-                ("category", None),
-                ("sku", None),
-                ("price", None),
-            ])
+            return _Result(
+                [
+                    ("tenant_id", None),
+                    ("item_id", None),
+                    ("category", None),
+                    ("sku", None),
+                    ("price", None),
+                ]
+            )
         raise AssertionError(f"Unexpected SQL: {sql}")
 
 
@@ -231,7 +241,9 @@ def mock_multicol() -> _MockConnectionMultiCol:
     return _MockConnectionMultiCol()
 
 
-def test_composite_pk_golden(dialect: CubridDialect, mock_multicol: _MockConnectionMultiCol) -> None:
+def test_composite_pk_golden(
+    dialect: CubridDialect, mock_multicol: _MockConnectionMultiCol
+) -> None:
     pk = dialect.get_pk_constraint(mock_multicol, "items")
     assert pk == {"name": "pk_items", "constrained_columns": ["tenant_id", "item_id"]}
 

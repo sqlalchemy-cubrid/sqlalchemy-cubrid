@@ -180,7 +180,6 @@ class TestTypeInstantiation:
         t = STRING(national=True)
         assert t.national is True
 
-
     def test_blob(self):
         t = BLOB()
         assert isinstance(t, sqltypes.LargeBinary)
