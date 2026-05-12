@@ -277,6 +277,33 @@ stmt = (
 - At least one of `when_matched_then_update` or `when_not_matched_then_insert` must be specified
 - `when_matched_then_delete` can only be called after `when_matched_then_update`
 
+**Column Key Resolution:**
+
+Column keys in `when_matched_then_update()` and `when_not_matched_then_insert()` dictionaries are resolved as follows:
+
+1. **String keys** — must match a column name in the target table. Raises `CompileError` if no matching column exists.
+2. **Column objects** — if the column belongs to the target table, its DB-level name is used directly. If it belongs to another table but a column with the same key exists in the target, the target column's name is used.
+
+```python
+# Valid: string key matches target column
+.when_matched_then_update({"name": source_table.c.name})
+
+# Valid: Column object from target table
+.when_matched_then_update({target_table.c.name: source_table.c.name})
+
+# Invalid: string key not in target table → CompileError
+.when_matched_then_update({"nonexistent_col": source_table.c.name})
+```
+
+**Compile-time errors:**
+
+| Error | Cause |
+|-------|-------|
+| `MERGE statement requires a target table` | No target table specified |
+| `MERGE statement requires a USING source` | `.using()` not called |
+| `MERGE statement requires an ON condition` | `.on()` not called |
+| `MERGE: column 'X' not found in target table` | String/Column key doesn't resolve to a target column |
+
 ---
 
 ## GROUP_CONCAT
