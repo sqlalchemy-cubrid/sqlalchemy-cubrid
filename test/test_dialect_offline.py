@@ -395,6 +395,32 @@ class TestReflectionMethods:
         assert columns[1]["type"].length == 20
         assert columns[1]["nullable"] is False
 
+    def test_get_columns_collection_with_precision_scale_member(self):
+        """Regression: SET(NUMERIC(10,2)) must not split on the inner comma. (#204)"""
+        dialect = CubridDialect()
+        connection = MagicMock()
+        connection.info_cache = {}
+        connection.dialect_options = {}
+
+        rows = [
+            ("set_col", "SET(NUMERIC(10,2),VARCHAR(50))", "YES", "", None, ""),
+        ]
+        comment_rows: list[Any] = []
+        connection.execute.side_effect = [rows, comment_rows]
+
+        columns = _invoke_reflection(dialect, "get_columns", connection, "coll_table")
+
+        assert len(columns) == 1
+        col_type = columns[0]["type"]
+        assert col_type.__class__.__name__ == "SET"
+        members = col_type._ddl_values
+        assert len(members) == 2
+        assert members[0].__class__.__name__ == "NUMERIC"
+        assert members[0].precision == 10
+        assert members[0].scale == 2
+        assert members[1].__class__.__name__ == "VARCHAR"
+        assert members[1].length == 50
+
     def test_get_pk_constraint_with_primary_key_and_constraint_name(self):
         dialect = CubridDialect()
         connection = MagicMock()

@@ -82,6 +82,25 @@ log = logging.getLogger(__name__)
 _RE_TYPE_PARAMS = re.compile(r"\([\d,]+\)")
 _RE_COLLECTION = re.compile(r"^(SET|MULTISET|SEQUENCE)\s*\((.+)\)$", re.IGNORECASE)
 _RE_LENGTH = re.compile(r"\((\d+)\)")
+
+
+def _split_collection_members(inner: str) -> list[str]:
+    """Split collection member types respecting parenthesis depth."""
+    parts: list[str] = []
+    depth = 0
+    start = 0
+    for i, ch in enumerate(inner):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(inner[start:i])
+            start = i + 1
+    parts.append(inner[start:])
+    return parts
+
+
 _RE_PRECISION_SCALE = re.compile(r"\((\d+)(?:,\s*(\d+))?\)")
 
 # CUBRID's ``SHOW CREATE TABLE`` emits foreign-key clauses such as::
@@ -327,7 +346,7 @@ class CubridDialect(default.DefaultDialect):
                 inner_raw = collection_match.group(2)
                 coll_cls = self.ischema_names[coll_name]
                 members: list[Any] = []
-                for member_str in inner_raw.split(","):
+                for member_str in _split_collection_members(inner_raw):
                     member_str = member_str.strip()
                     member_key = _RE_TYPE_PARAMS.sub("", member_str).strip()
                     if member_key in ("CHAR", "VARCHAR", "NCHAR", "CHAR VARYING", "NCHAR VARYING"):
