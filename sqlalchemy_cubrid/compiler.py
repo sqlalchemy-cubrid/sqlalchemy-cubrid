@@ -629,6 +629,8 @@ class CubridTypeCompiler(compiler.GenericTypeCompiler):
         return "CLOB"
 
     def visit_STRING(self, type_: Any, **kw: Any) -> str:
+        if hasattr(type_, "national") and type_.national:
+            return self.visit_NVARCHAR(type_)
         return "STRING"
 
     def visit_SET(self, type_: Any, **kw: Any) -> str:

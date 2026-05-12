@@ -448,6 +448,12 @@ class TestTypeCompilation:
         result = self._compile_type(STRING())
         assert result == "STRING"
 
+    def test_string_with_national_flag(self):
+        from sqlalchemy_cubrid.types import STRING
+
+        result = self._compile_type(STRING(national=True))
+        assert "NCHAR VARYING" in result
+
     def test_clob(self):
         from sqlalchemy_cubrid.types import CLOB
 
@@ -863,6 +869,7 @@ class TestUpdateCompilation:
         stmt.kwargs["cubrid_limit"] = "5"
         with pytest.raises(CompileError, match="non-negative integer"):
             _compile(stmt)
+
     def test_update_from_raises_compile_error(self):
         t1 = sa.table("t1", sa.column("id"), sa.column("val"))
         t2 = sa.table("t2", sa.column("id"), sa.column("rate"))
@@ -1589,13 +1596,13 @@ class TestCoverageEdgeCases:
             Column("name", String(100)),
             extend_existing=True,
         )
-        
+
         # Test 1: Column object that IS in target_columns returns the target column
         stmt = merge(users).using(source).on(users.c.id == source.c.id)
         stmt = stmt.when_matched_then_update({users.c.name: source.c.name})
         sql = _compile(stmt)
         assert "WHEN MATCHED THEN UPDATE SET" in sql
-        
+
         # Test 2: Column-like object without proper target metadata still compiles
         # by accepting the object as-is (fallback behavior)
         non_target_col = Column("external_col", String(50))
