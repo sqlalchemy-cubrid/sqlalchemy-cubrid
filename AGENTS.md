@@ -11,7 +11,7 @@ Alembic migration support, and PEP 561 typing.
 - **Language**: Python 3.10+
 - **Framework**: SQLAlchemy 2.0 – 2.1
 - **License**: MIT
-- **Version**: 1.4.2 (Production/Stable)
+- **Version**: 1.4.3.dev0 (Production/Stable)
 
 ## Architecture
 
@@ -158,6 +158,8 @@ All non-trivial work across cubrid-lab repositories MUST follow this 4-phase cyc
 4. **Oracle Post-Implementation Review** — Consult Oracle to review the completed work for correctness, edge cases, and consistency before merging.
 
 Skipping any phase requires explicit justification. Trivial changes (typos, single-line fixes) may skip phases 1 and 4.
+
+5. **All changes to `main` MUST go through a Pull Request** with at least one review. No direct pushes.
 
 ## Test Structure
 
