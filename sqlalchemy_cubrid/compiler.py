@@ -551,6 +551,8 @@ class CubridTypeCompiler(compiler.GenericTypeCompiler):
     def visit_DOUBLE(self, type_: Any, **kw: Any) -> str:
         return "DOUBLE"
 
+    visit_double = visit_DOUBLE
+
     def visit_MONETARY(self, type_: Any, **kw: Any) -> str:
         return "MONETARY"
 
