@@ -19,6 +19,10 @@ class SupportsAutocommit(Protocol):
     autocommit: bool
 
 
+class SupportsPing(Protocol):
+    def ping(self, reconnect: bool = True) -> bool: ...
+
+
 def _async_url() -> str:
     sync = os.environ.get("CUBRID_TEST_URL", _DEFAULT_SYNC_URL)
     return sync.replace("cubrid://", "cubrid+aiopycubrid://", 1)
@@ -208,24 +212,46 @@ class TestAsyncCRUD:
     ):
         async with pre_ping_engine.connect() as conn:
             raw = await conn.get_raw_connection()
-            driver_connection = cast(
+            dropped_driver_connection = cast(
                 object,
                 getattr(cast(object, raw.driver_connection), "_connection"),
             )
             close_streams = cast(
                 Callable[[], Awaitable[None]],
-                getattr(driver_connection, "_close_streams"),
+                getattr(dropped_driver_connection, "_close_streams"),
             )
 
         await close_streams()
 
         dialect = pre_ping_engine.sync_engine.dialect
-        with patch.object(dialect, "do_ping", wraps=dialect.do_ping) as do_ping_spy:
+        ping_results: list[bool] = []
+
+        def record_do_ping(dbapi_connection: object) -> bool:
+            result = bool(cast(SupportsPing, dbapi_connection).ping(False))
+            ping_results.append(result)
+            return result
+
+        with patch.object(dialect, "do_ping", side_effect=record_do_ping):
+            async with pre_ping_engine.connect() as conn:
+                raw = await conn.get_raw_connection()
+                recovered_driver_connection = cast(
+                    object,
+                    getattr(cast(object, raw.driver_connection), "_connection"),
+                )
+                result = await conn.execute(text("SELECT 1"))
+                assert result.scalar_one() == 1
+
             async with pre_ping_engine.connect() as conn:
                 result = await conn.execute(text("SELECT 1"))
                 assert result.scalar_one() == 1
 
-        assert do_ping_spy.call_count >= 1
+        false_index = next(
+            (index for index, value in enumerate(ping_results) if value is False),
+            None,
+        )
+        assert false_index is not None, ping_results
+        assert any(value is True for value in ping_results[false_index + 1 :]), ping_results
+        assert recovered_driver_connection is not dropped_driver_connection
 
     async def test_insert_returns_lastrowid(self, engine: AsyncEngine, users_table: Table):
         # Keep the adapter surface minimal: async pycubrid already populates
