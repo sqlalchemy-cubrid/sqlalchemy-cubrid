@@ -41,6 +41,10 @@ class AsyncAdapt_pycubrid_cursor(AsyncAdapt_dbapi_cursor):
 
 class AsyncAdapt_pycubrid_connection(AsyncAdapt_dbapi_connection):
     _cursor_cls = AsyncAdapt_pycubrid_cursor
+    # SA 2.0 exposed ``await_`` on AsyncAdapt_dbapi_connection; SA 2.1 dropped
+    # it in favour of the module-level helper. Redeclare so ``self.await_(...)``
+    # works on both versions and remains patchable in tests.
+    await_ = staticmethod(await_only)
 
     @property
     def autocommit(self) -> bool:

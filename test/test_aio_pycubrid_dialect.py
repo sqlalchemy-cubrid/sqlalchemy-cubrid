@@ -159,7 +159,16 @@ class TestAsyncAdaptPycubridConnection:
 
         conn = AsyncAdapt_pycubrid_connection(mock_dbapi, mock_async_conn)
 
-        with patch.object(conn, "await_", side_effect=lambda x: mock_cursor):
+        # SA 2.0 routes through ``self.await_``; SA 2.1 calls the module-level
+        # helper inside _aenter_cursor. Patch both so the test is version-agnostic.
+        with (
+            patch.object(conn, "await_", side_effect=lambda x: mock_cursor),
+            patch(
+                "sqlalchemy.connectors.asyncio.await_",
+                side_effect=lambda x: mock_cursor,
+                create=True,
+            ),
+        ):
             cur = conn.cursor()
 
         assert isinstance(cur, AsyncAdapt_pycubrid_cursor)
