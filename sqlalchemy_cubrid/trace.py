@@ -23,11 +23,14 @@ Usage::
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Mapping, Sequence
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql.expression import Executable
+
+_logger = logging.getLogger(__name__)
 
 __all__ = ("trace_query",)
 
@@ -93,7 +96,10 @@ def trace_query(
 
         return trace_output
     finally:
+        # Best-effort cleanup: intentionally swallow any exception from
+        # `SET TRACE OFF` so we never mask the original exception (if any)
+        # raised inside the try block. Log at debug level for observability.
         try:
             connection.execute(text("SET TRACE OFF"))
-        except Exception:  # noqa: BLE001 — never mask the original exception
-            pass
+        except Exception as exc:  # noqa: BLE001 - cleanup must not mask original error
+            _logger.debug("Failed to disable CUBRID trace during cleanup: %s", exc)
