@@ -3,7 +3,7 @@
 ## Design Objectives
 sqlalchemy-cubrid is designed to provide a robust, modern interface between SQLAlchemy and the CUBRID database. Its core design goals include:
 
-*   Full SQLAlchemy 2.0–2.1 dialect implementation
+*   Full SQLAlchemy 2.0–2.2 dialect implementation
 *   Three driver modes (C-extension CUBRIDdb + pure Python pycubrid + async pycubrid.aio)
 *   Schema reflection (tables, columns, constraints, indexes, comments)
 *   Custom DML extensions (ON DUPLICATE KEY UPDATE, MERGE, REPLACE)

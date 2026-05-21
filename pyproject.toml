@@ -32,7 +32,7 @@ classifiers = [
     "Topic :: Database :: Front-Ends",
 ]
 dependencies = [
-    "sqlalchemy>=2.0,<2.2",
+    "sqlalchemy>=2.0,<2.3",
 ]
 
 [project.optional-dependencies]

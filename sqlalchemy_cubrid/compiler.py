@@ -146,6 +146,22 @@ class CubridCompiler(compiler.SQLCompiler):
             return f"LIMIT {limit}"
         return None
 
+    def update_post_criteria_clause(self, update_stmt: Any, **kw: Any) -> str | None:
+        # SA 2.1 replaced the dialect-level ``update_limit_clause`` hook with
+        # ``update_post_criteria_clause``. SA 2.0 never calls this method, so
+        # the override is harmless there.
+        parts: list[str] = []
+        try:
+            base = super().update_post_criteria_clause(update_stmt, **kw)
+        except AttributeError:  # pragma: no cover — SA 2.0 base class lacks this hook
+            base = None
+        if base:
+            parts.append(base)
+        limit_text = self.update_limit_clause(update_stmt)
+        if limit_text:
+            parts.append(limit_text)
+        return " ".join(parts) if parts else None
+
     def update_tables_clause(
         self,
         update_stmt: Any,
@@ -414,7 +430,10 @@ class CubridCompiler(compiler.SQLCompiler):
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
-        elif binary.type._type_affinity is sqltypes.Numeric:
+        elif binary.type._type_affinity is sqltypes.Numeric or (
+            # SA 2.1 split Float out of the Numeric affinity; treat both as DOUBLE.
+            binary.type._type_affinity is sqltypes.Float
+        ):
             type_expression = "ELSE CAST(JSON_EXTRACT(%s, %s) AS DOUBLE)" % (
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),

@@ -15,7 +15,7 @@ Compatibility and feature support for sqlalchemy-cubrid releases.
 | ≥ 2.2 | ❌ Not supported | Code uses private SA internals (see below) |
 | < 2.0 | ❌ Not supported | SA 1.x API removed |
 
-**Why `<2.2`?** The dialect accesses private SQLAlchemy APIs that may change without notice:
+**Why `<2.3`?** The dialect accesses private SQLAlchemy APIs that may change without notice:
 
 | Private API | Location | Usage |
 |---|---|---|
