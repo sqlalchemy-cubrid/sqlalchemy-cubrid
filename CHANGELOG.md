@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-05-23
+
 ### Added
 - **SQLAlchemy 2.1 / forward-compat shims for SA 2.2 (#206)** — dependency upper bound bumped to `<2.3` (now `sqlalchemy>=2.0,<2.3`), enabling installation on SA 2.1 and future 2.2 releases. New `CubridCompiler.update_post_criteria_clause` override routes the existing `cubrid_limit` LIMIT rendering through the SA 2.1 hook that replaced `update_limit_clause`. `_render_json_extract_from_binary` now recognises `Float` as a numeric affinity since SA 2.1 split it out of `Numeric`, restoring `CAST(... AS DOUBLE)` emission for `JSON[...].as_float()`. `AsyncAdapt_pycubrid_connection.await_` is redeclared as a class-level staticmethod because SA 2.1 dropped the inherited attribute on `AsyncAdapt_dbapi_connection`. Cross-version offline test suite (639 tests) green on both SA 2.0.49 and SA 2.1.0b2.
 - **`sqlalchemy-22-canary` CI job promoted to gating (#206)** — previously `continue-on-error: true` against a non-existent `sqlalchemy>=2.2.0b1`. Now installs `--pre "sqlalchemy>=2.1.0b1,<2.3"` so the job actually exercises the latest available SA pre-release and fails the build on regressions.
